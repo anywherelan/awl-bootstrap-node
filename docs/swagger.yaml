@@ -1,0 +1,124 @@
+basePath: /api/v0/
+definitions:
+  entity.BandwidthDebugInfo:
+    properties:
+      byProtocol:
+        additionalProperties:
+          $ref: '#/definitions/entity.BandwidthInfo'
+        type: object
+      total:
+        $ref: '#/definitions/entity.BandwidthInfo'
+        type: object
+    type: object
+  entity.BandwidthInfo:
+    properties:
+      rateIn:
+        type: string
+      rateOut:
+        type: string
+      totalIn:
+        type: string
+      totalOut:
+        type: string
+    type: object
+  entity.BootstrapPeerDebugInfo:
+    properties:
+      connections:
+        items:
+          type: string
+        type: array
+      error:
+        type: string
+    type: object
+  entity.ConnectionsDebugInfo:
+    properties:
+      connectedPeersCount:
+        type: integer
+      lastTrimAgo:
+        type: string
+      openConnectionsCount:
+        type: integer
+      openStreamsCount:
+        type: integer
+      totalStreamsInbound:
+        type: integer
+      totalStreamsOutbound:
+        type: integer
+    type: object
+  entity.DhtDebugInfo:
+    properties:
+      bootstrapPeers:
+        additionalProperties:
+          $ref: '#/definitions/entity.BootstrapPeerDebugInfo'
+        type: object
+      listenAddress:
+        items:
+          type: string
+        type: array
+      observedAddrs:
+        items:
+          type: string
+        type: array
+      peersWithAddrsCount:
+        type: integer
+      reachability:
+        type: string
+      routingTableSize:
+        type: integer
+    type: object
+  entity.GeneralDebugInfo:
+    properties:
+      uptime:
+        type: string
+    type: object
+  entity.P2pDebugInfo:
+    properties:
+      bandwidth:
+        $ref: '#/definitions/entity.BandwidthDebugInfo'
+        type: object
+      connections:
+        $ref: '#/definitions/entity.ConnectionsDebugInfo'
+        type: object
+      dht:
+        $ref: '#/definitions/entity.DhtDebugInfo'
+        type: object
+      general:
+        $ref: '#/definitions/entity.GeneralDebugInfo'
+        type: object
+    type: object
+host: localhost:9090
+info:
+  contact: { }
+  description: Peerlan API
+  title: Peerlan API
+  version: "0.1"
+paths:
+  /debug/log:
+    get:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: log text
+          schema:
+            type: string
+      summary: Get logs
+      tags:
+        - Debug
+  /debug/p2p_info:
+    get:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.P2pDebugInfo'
+      summary: Get p2p debug info
+      tags:
+        - Debug
+swagger: "2.0"
