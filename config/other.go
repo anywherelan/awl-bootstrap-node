@@ -17,22 +17,7 @@ const (
 	dirsPerm  = 0700
 )
 
-var logger = log.Logger("peerlan/config")
-
-var DefaultBootstrapPeers []multiaddr.Multiaddr
-
-func init() {
-	for _, s := range []string{
-		// TODO
-	} {
-		ma, err := multiaddr.NewMultiaddr(s)
-		if err != nil {
-			logger.DPanicf("parse multiaddr: %v", err)
-			continue
-		}
-		DefaultBootstrapPeers = append(DefaultBootstrapPeers, ma)
-	}
-}
+var logger = log.Logger("awl/config")
 
 var (
 	executableDir string
@@ -110,10 +95,6 @@ func setDefaults(conf *Config) {
 	if conf.LoggerLevel == "" {
 		conf.LoggerLevel = "debug"
 	}
-	// TODO
-	//if conf.LoggerLevel == "" {
-	//	conf.LoggerLevel = "info"
-	//}
 	if conf.HttpListenAddress == "" {
 		conf.HttpListenAddress = "127.0.0.1:" + strconv.Itoa(DefaultHTTPPort)
 	}

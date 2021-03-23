@@ -1,4 +1,4 @@
-module github.com/peerlan/bootstrap-node
+module github.com/anywherelan/awl-bootstrap-node
 
 go 1.13
 

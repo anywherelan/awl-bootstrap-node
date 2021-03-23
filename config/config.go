@@ -77,8 +77,6 @@ func (c *Config) GetBootstrapPeers() []multiaddr.Multiaddr {
 	}
 	c.RUnlock()
 
-	allMultiaddrs = append(allMultiaddrs, DefaultBootstrapPeers...)
-
 	result := make([]multiaddr.Multiaddr, 0, len(allMultiaddrs))
 	resultMap := make(map[string]struct{}, len(allMultiaddrs))
 	for _, maddr := range allMultiaddrs {

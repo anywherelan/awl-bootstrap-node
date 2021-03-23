@@ -8,7 +8,6 @@ definitions:
         type: object
       total:
         $ref: '#/definitions/entity.BandwidthInfo'
-        type: object
     type: object
   entity.BandwidthInfo:
     properties:
@@ -75,22 +74,19 @@ definitions:
     properties:
       bandwidth:
         $ref: '#/definitions/entity.BandwidthDebugInfo'
-        type: object
       connections:
         $ref: '#/definitions/entity.ConnectionsDebugInfo'
-        type: object
       dht:
         $ref: '#/definitions/entity.DhtDebugInfo'
-        type: object
       general:
         $ref: '#/definitions/entity.GeneralDebugInfo'
-        type: object
     type: object
 host: localhost:9090
 info:
   contact: { }
-  description: Peerlan API
-  title: Peerlan API
+  description: Anywherelan API
+  license: { }
+  title: Anywherelan API
   version: "0.1"
 paths:
   /debug/log:

@@ -7,12 +7,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/peerlan/bootstrap-node/application"
+	"github.com/anywherelan/awl-bootstrap-node/application"
 )
 
-// @title Peerlan API
+// @title Anywherelan API
 // @version 0.1
-// @description Peerlan API
+// @description Anywherelan API
 
 // @Host localhost:9090
 // @BasePath /api/v0/

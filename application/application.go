@@ -7,13 +7,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anywherelan/awl-bootstrap-node/api"
+	"github.com/anywherelan/awl-bootstrap-node/config"
+	"github.com/anywherelan/awl-bootstrap-node/p2p"
+	"github.com/anywherelan/awl-bootstrap-node/ringbuffer"
+	"github.com/anywherelan/awl-bootstrap-node/service"
 	"github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/peerlan/bootstrap-node/api"
-	"github.com/peerlan/bootstrap-node/config"
-	"github.com/peerlan/bootstrap-node/p2p"
-	"github.com/peerlan/bootstrap-node/ringbuffer"
-	"github.com/peerlan/bootstrap-node/service"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -65,7 +65,7 @@ func (a *Application) SetupLoggerAndConfig() *log.ZapEventLogger {
 	// Config
 	conf, err := config.LoadConfig()
 	if err != nil {
-		fmt.Printf("ERROR peerlan: failed to read config file, creating new one: %v\n", err)
+		fmt.Printf("ERROR anywherelan: failed to read config file, creating new one: %v\n", err)
 		conf = config.NewConfig()
 	}
 
@@ -91,7 +91,7 @@ func (a *Application) SetupLoggerAndConfig() *log.ZapEventLogger {
 
 	log.SetupLogging(zapCore, func(name string) zapcore.Level {
 		switch {
-		case strings.HasPrefix(name, "peerlan"):
+		case strings.HasPrefix(name, "awl"):
 			return lvl
 		case name == "swarm2":
 			// TODO решить какой выставлять
@@ -112,7 +112,7 @@ func (a *Application) SetupLoggerAndConfig() *log.ZapEventLogger {
 		opts...,
 	)
 
-	a.logger = log.Logger("peerlan")
+	a.logger = log.Logger("awl")
 	a.Conf = conf
 
 	return a.logger

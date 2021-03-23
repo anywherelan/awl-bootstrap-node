@@ -3,11 +3,12 @@ package p2p
 import (
 	"context"
 	"crypto/rand"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/anywherelan/awl-bootstrap-node/application/pkg"
+	"github.com/anywherelan/awl-bootstrap-node/config"
 	ds "github.com/ipfs/go-datastore"
 	dssync "github.com/ipfs/go-datastore/sync"
 	badger "github.com/ipfs/go-ds-badger"
@@ -35,8 +36,6 @@ import (
 	"github.com/libp2p/go-tcp-transport"
 	ws "github.com/libp2p/go-ws-transport"
 	"github.com/multiformats/go-multiaddr"
-	"github.com/peerlan/bootstrap-node/application/pkg"
-	"github.com/peerlan/bootstrap-node/config"
 	"go.uber.org/multierr"
 )
 
@@ -70,7 +69,7 @@ func NewP2p(ctx context.Context, cfg *config.Config) *P2p {
 		cfg:       cfg,
 		ctx:       newCtx,
 		ctxCancel: ctxCancel,
-		logger:    log.Logger("peerlan/p2p"),
+		logger:    log.Logger("awl/p2p"),
 	}
 }
 
@@ -194,7 +193,6 @@ func (p *P2p) FindPeer(ctx context.Context, id peer.ID) (peer.AddrInfo, error) {
 	return p.dht.FindPeer(ctx, id)
 }
 
-// TODO: тоже пробрасывать внешний контекст
 func (p *P2p) ConnectPeer(peerInfo peer.AddrInfo) error {
 	err := p.host.Connect(p.ctx, peerInfo)
 	return err
@@ -210,16 +208,6 @@ func (p *P2p) ChangeProtectedStatus(peerID peer.ID, tag string, protected bool) 
 
 func (p *P2p) IsConnected(peerID peer.ID) bool {
 	return p.host.Network().Connectedness(peerID) == network.Connected
-}
-
-func (p *P2p) PeerVersion(peerID peer.ID) string {
-	version, _ := p.host.Peerstore().Get(peerID, "AgentVersion")
-
-	if version != nil {
-		return strings.TrimPrefix(version.(string), pkg.UserAgentPrefix)
-	}
-
-	return ""
 }
 
 func (p *P2p) ConnsToPeer(peerID peer.ID) []network.Conn {

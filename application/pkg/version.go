@@ -1,7 +1,7 @@
 package pkg
 
 const (
-	Version         = "bootstrap-v0.2.1"
+	Version         = "v0.2.1"
 	UserAgent       = UserAgentPrefix + Version
-	UserAgentPrefix = "peerlan/"
+	UserAgentPrefix = "awl-bootstrap/"
 )
