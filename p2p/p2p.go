@@ -78,12 +78,12 @@ func (p *P2p) InitHost() (host.Host, error) {
 	var err error
 	privKeyBytes := p.cfg.PrivKey()
 	if privKeyBytes == nil {
-		privKey, _, err = crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, rand.Reader)
+		privKey, _, err = crypto.GenerateEd25519Key(rand.Reader)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		privKey, err = crypto.UnmarshalRsaPrivateKey(privKeyBytes)
+		privKey, err = crypto.UnmarshalEd25519PrivateKey(privKeyBytes)
 		if err != nil {
 			return nil, err
 		}
