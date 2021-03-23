@@ -1,7 +1,6 @@
 package config
 
 import (
-	"encoding/hex"
 	"io/ioutil"
 	"path/filepath"
 	"sync"
@@ -10,6 +9,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/mr-tron/base58/base58"
 	"github.com/multiformats/go-multiaddr"
 	"go.uber.org/zap/zapcore"
 )
@@ -46,7 +46,7 @@ func (c *Config) Save() {
 func (c *Config) SetIdentity(key crypto.PrivKey, id peer.ID) {
 	c.Lock()
 	by, _ := key.Raw()
-	identity := hex.EncodeToString(by)
+	identity := base58.Encode(by)
 
 	c.P2pNode.Identity = identity
 	c.P2pNode.PeerID = id.Pretty()
@@ -61,7 +61,7 @@ func (c *Config) PrivKey() []byte {
 	if c.P2pNode.Identity == "" {
 		return nil
 	}
-	b, err := hex.DecodeString(c.P2pNode.Identity)
+	b, err := base58.Decode(c.P2pNode.Identity)
 	if err != nil {
 		return nil
 	}
