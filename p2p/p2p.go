@@ -106,6 +106,7 @@ func (p *P2p) InitHost() (host.Host, error) {
 		return nil, err
 	}
 
+	// trim disabled
 	p.connManager = connmgr.NewConnManager(
 		0,
 		0,
@@ -147,7 +148,6 @@ func (p *P2p) InitHost() (host.Host, error) {
 			libp2p.Security(tls.ID, tls.New),
 			libp2p.Security(noise.ID, noise.New),
 		),
-		//libp2p.NATPortMap(), // REMOVE ?
 	)
 	p.host = host
 

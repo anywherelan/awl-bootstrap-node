@@ -26,6 +26,7 @@ type (
 		P2pNode           P2pNode
 		LoggerLevel       string
 		HttpListenAddress string
+		peerID            peer.ID
 	}
 	P2pNode struct {
 		PeerID   string
@@ -50,6 +51,7 @@ func (c *Config) SetIdentity(key crypto.PrivKey, id peer.ID) {
 
 	c.P2pNode.Identity = identity
 	c.P2pNode.PeerID = id.Pretty()
+	c.peerID = id
 	c.save()
 	c.Unlock()
 }
@@ -73,6 +75,11 @@ func (c *Config) GetBootstrapPeers() []multiaddr.Multiaddr {
 	allMultiaddrs := make([]multiaddr.Multiaddr, 0, len(c.P2pNode.BootstrapPeers))
 	for _, val := range c.P2pNode.BootstrapPeers {
 		newMultiaddr, _ := multiaddr.NewMultiaddr(val)
+		peerInfo, err := peer.AddrInfoFromP2pAddr(newMultiaddr)
+		if err == nil && peerInfo.ID == c.peerID {
+			continue
+		}
+
 		allMultiaddrs = append(allMultiaddrs, newMultiaddr)
 	}
 	c.RUnlock()
