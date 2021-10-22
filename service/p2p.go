@@ -1,11 +1,9 @@
 package service
 
 import (
-	"sync"
 	"time"
 
 	"github.com/anywherelan/awl-bootstrap-node/config"
-	"github.com/anywherelan/awl-bootstrap-node/entity"
 	"github.com/anywherelan/awl-bootstrap-node/p2p"
 	"github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/metrics"
@@ -20,20 +18,18 @@ const (
 )
 
 type P2pService struct {
-	p2pServer      *p2p.P2p
-	conf           *config.Config
-	logger         *log.ZapEventLogger
-	startedAt      time.Time
-	bootstrapsInfo map[string]entity.BootstrapPeerDebugInfo
+	p2pServer *p2p.P2p
+	conf      *config.Config
+	logger    *log.ZapEventLogger
+	startedAt time.Time
 }
 
 func NewP2p(server *p2p.P2p, conf *config.Config) *P2pService {
 	p := &P2pService{
-		p2pServer:      server,
-		conf:           conf,
-		logger:         log.Logger("awl/service/p2p"),
-		startedAt:      time.Now(),
-		bootstrapsInfo: make(map[string]entity.BootstrapPeerDebugInfo),
+		p2pServer: server,
+		conf:      conf,
+		logger:    log.Logger("awl/service/p2p"),
+		startedAt: time.Now(),
 	}
 
 	// Protect friendly peers from disconnecting
@@ -87,10 +83,6 @@ func (s *P2pService) BootstrapPeersStats() (int, int) {
 	}
 
 	return total, connected
-}
-
-func (s *P2pService) BootstrapPeersStatsDetailed() map[string]entity.BootstrapPeerDebugInfo {
-	return s.bootstrapsInfo
 }
 
 func (s *P2pService) ConnectedPeersCount() int {
@@ -160,49 +152,4 @@ func (s *P2pService) NetworkStatsForPeer(peerID peer.ID) metrics.Stats {
 
 func (s *P2pService) Uptime() time.Duration {
 	return time.Since(s.startedAt)
-}
-
-func (s *P2pService) MaintainBackgroundConnections(intervalSec time.Duration) {
-	s.connectToKnownPeers()
-	time.Sleep(5 * time.Second)
-	s.connectToKnownPeers()
-
-	t := time.NewTicker(intervalSec * time.Second)
-	defer t.Stop()
-
-	for range t.C {
-		s.connectToKnownPeers()
-		s.p2pServer.TrimOpenConnections()
-	}
-}
-
-func (s *P2pService) connectToKnownPeers() {
-	var wg sync.WaitGroup
-	bootstrapsInfo := make(map[string]entity.BootstrapPeerDebugInfo)
-	var mu sync.Mutex
-
-	for _, peerAddr := range s.conf.GetBootstrapPeers() {
-		peerInfo, err := peer.AddrInfoFromP2pAddr(peerAddr)
-		if err != nil {
-			continue
-		}
-
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			err := s.p2pServer.ConnectPeer(*peerInfo)
-			var info entity.BootstrapPeerDebugInfo
-			if err != nil {
-				info.Error = err.Error()
-			}
-			info.Connections = s.PeerAddresses(peerInfo.ID)
-			mu.Lock()
-			bootstrapsInfo[peerInfo.ID.String()] = info
-			mu.Unlock()
-		}()
-	}
-
-	wg.Wait()
-
-	s.bootstrapsInfo = bootstrapsInfo
 }

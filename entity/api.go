@@ -20,7 +20,6 @@ type (
 		ListenAddress       []string
 		PeersWithAddrsCount int
 		ObservedAddrs       []string
-		BootstrapPeers      map[string]BootstrapPeerDebugInfo
 	}
 	BootstrapPeerDebugInfo struct {
 		Error       string

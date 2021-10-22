@@ -35,7 +35,6 @@ func (h *Handler) GetP2pDebugInfo(c echo.Context) (err error) {
 			ListenAddress:       maToStrings(h.p2p.AnnouncedAs()),
 			PeersWithAddrsCount: h.p2p.PeersWithAddrsCount(),
 			ObservedAddrs:       maToStrings(h.p2p.ObservedAddrs()),
-			BootstrapPeers:      h.p2p.BootstrapPeersStatsDetailed(),
 		},
 		Connections: entity.ConnectionsDebugInfo{
 			ConnectedPeersCount:  h.p2p.ConnectedPeersCount(),

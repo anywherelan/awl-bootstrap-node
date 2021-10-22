@@ -56,8 +56,6 @@ func (a *Application) Init(ctx context.Context) error {
 	handler := api.NewHandler(a.Conf, a.P2pService, a.LogBuffer)
 	handler.SetupAPI()
 
-	go a.P2pService.MaintainBackgroundConnections(20)
-
 	return nil
 }
 
