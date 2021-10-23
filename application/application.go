@@ -10,7 +10,6 @@ import (
 	"github.com/anywherelan/awl-bootstrap-node/api"
 	"github.com/anywherelan/awl-bootstrap-node/application/pkg"
 	"github.com/anywherelan/awl-bootstrap-node/config"
-	"github.com/anywherelan/awl-bootstrap-node/service"
 	"github.com/anywherelan/awl/p2p"
 	"github.com/anywherelan/awl/ringbuffer"
 	ds "github.com/ipfs/go-datastore"
@@ -38,9 +37,8 @@ type Application struct {
 	Conf      *config.Config
 	ctx       context.Context
 
-	Api        *api.Handler
-	p2pServer  *p2p.P2p
-	P2pService *service.P2pService
+	Api       *api.Handler
+	p2pServer *p2p.P2p
 }
 
 func New() *Application {
@@ -66,9 +64,7 @@ func (a *Application) Init(ctx context.Context) error {
 		return err
 	}
 
-	a.P2pService = service.NewP2p(p2pSrv, a.Conf)
-
-	handler := api.NewHandler(a.Conf, a.P2pService, a.LogBuffer)
+	handler := api.NewHandler(a.Conf, a.p2pServer, a.LogBuffer)
 	a.Api = handler
 	err = handler.SetupAPI()
 	if err != nil {

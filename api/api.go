@@ -9,7 +9,7 @@ import (
 	"runtime/pprof"
 
 	"github.com/anywherelan/awl-bootstrap-node/config"
-	"github.com/anywherelan/awl-bootstrap-node/service"
+	"github.com/anywherelan/awl/p2p"
 	"github.com/anywherelan/awl/ringbuffer"
 	"github.com/go-playground/validator/v10"
 	"github.com/ipfs/go-log/v2"
@@ -21,11 +21,11 @@ type Handler struct {
 	echo      *echo.Echo
 	conf      *config.Config
 	logger    *log.ZapEventLogger
-	p2p       *service.P2pService
+	p2p       *p2p.P2p
 	logBuffer *ringbuffer.RingBuffer
 }
 
-func NewHandler(conf *config.Config, p2p *service.P2pService, logBuffer *ringbuffer.RingBuffer) *Handler {
+func NewHandler(conf *config.Config, p2p *p2p.P2p, logBuffer *ringbuffer.RingBuffer) *Handler {
 	return &Handler{
 		conf:      conf,
 		p2p:       p2p,
