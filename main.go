@@ -10,9 +10,9 @@ import (
 	"github.com/anywherelan/awl-bootstrap-node/application"
 )
 
-// @title Anywherelan API
+// @title Anywherelan bootstrap node API
 // @version 0.1
-// @description Anywherelan API
+// @description Anywherelan bootstrap node API
 
 // @Host localhost:9090
 // @BasePath /api/v0/

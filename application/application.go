@@ -38,6 +38,7 @@ type Application struct {
 	Conf      *config.Config
 	ctx       context.Context
 
+	Api        *api.Handler
 	p2pServer  *p2p.P2p
 	P2pService *service.P2pService
 }
@@ -68,7 +69,11 @@ func (a *Application) Init(ctx context.Context) error {
 	a.P2pService = service.NewP2p(p2pSrv, a.Conf)
 
 	handler := api.NewHandler(a.Conf, a.P2pService, a.LogBuffer)
-	handler.SetupAPI()
+	a.Api = handler
+	err = handler.SetupAPI()
+	if err != nil {
+		return fmt.Errorf("failed to setup api: %v", err)
+	}
 
 	return nil
 }
@@ -131,6 +136,14 @@ func (a *Application) SetupLoggerAndConfig() *log.ZapEventLogger {
 }
 
 func (a *Application) Close() {
+	if a.Api != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		err := a.Api.Shutdown(ctx)
+		if err != nil {
+			a.logger.Errorf("closing api server: %v", err)
+		}
+	}
 	if a.p2pServer != nil {
 		err := a.p2pServer.Close()
 		if err != nil {

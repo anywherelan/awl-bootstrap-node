@@ -1,14 +1,15 @@
 package api
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 	"sort"
+	"unicode/utf8"
 
 	"github.com/anywherelan/awl-bootstrap-node/entity"
 	"github.com/labstack/echo/v4"
 	"github.com/libp2p/go-libp2p-core/metrics"
-	"github.com/libp2p/go-libp2p-core/network"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
@@ -31,7 +32,7 @@ func (h *Handler) GetP2pDebugInfo(c echo.Context) (err error) {
 		},
 		DHT: entity.DhtDebugInfo{
 			RoutingTableSize:    h.p2p.RoutingTableSize(),
-			Reachability:        reachabilityToString(h.p2p.Reachability()),
+			Reachability:        h.p2p.Reachability().String(),
 			ListenAddress:       maToStrings(h.p2p.AnnouncedAs()),
 			PeersWithAddrsCount: h.p2p.PeersWithAddrsCount(),
 			ObservedAddrs:       maToStrings(h.p2p.ObservedAddrs()),
@@ -57,11 +58,14 @@ func (h *Handler) GetP2pDebugInfo(c echo.Context) (err error) {
 // @Tags Debug
 // @Summary Get logs
 // @Accept json
-// @Produce json
+// @Produce plain
 // @Success 200 {string} string "log text"
 // @Router /debug/log [GET]
 func (h *Handler) GetLog(c echo.Context) (err error) {
 	b := h.logBuffer.Bytes()
+	if !utf8.Valid(b) {
+		b = bytes.ToValidUTF8(b, []byte(""))
+	}
 	return c.Blob(http.StatusOK, echo.MIMETextPlainCharsetUTF8, b)
 }
 
@@ -96,17 +100,4 @@ func maToStrings(addrs []ma.Multiaddr) []string {
 	sort.Strings(res)
 
 	return res
-}
-
-func reachabilityToString(reachability network.Reachability) string {
-	switch reachability {
-	case network.ReachabilityUnknown:
-		return "unknown"
-	case network.ReachabilityPublic:
-		return "public"
-	case network.ReachabilityPrivate:
-		return "private"
-	default:
-		return ""
-	}
 }

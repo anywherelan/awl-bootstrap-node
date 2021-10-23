@@ -1,6 +1,9 @@
 package api
 
 import (
+	"context"
+	"fmt"
+	"net"
 	"net/http"
 	http_pprof "net/http/pprof"
 	"runtime/pprof"
@@ -15,6 +18,7 @@ import (
 )
 
 type Handler struct {
+	echo      *echo.Echo
 	conf      *config.Config
 	logger    *log.ZapEventLogger
 	p2p       *service.P2pService
@@ -25,19 +29,18 @@ func NewHandler(conf *config.Config, p2p *service.P2pService, logBuffer *ringbuf
 	return &Handler{
 		conf:      conf,
 		p2p:       p2p,
+		logger:    log.Logger("awl/api"),
 		logBuffer: logBuffer,
 	}
 }
 
-func (h *Handler) SetupAPI() {
-	logger := log.Logger("awl/api")
-	h.logger = logger
-
+func (h *Handler) SetupAPI() error {
 	e := echo.New()
+	h.echo = e
 	e.HideBanner = true
 	e.HidePort = true
 	val := validator.New()
-	e.Validator = &CustomValidator{validator: val}
+	e.Validator = &customValidator{validator: val}
 
 	// Middleware
 	if !h.conf.DevMode() {
@@ -64,20 +67,31 @@ func (h *Handler) SetupAPI() {
 	}
 
 	// Start
+	address := h.conf.HttpListenAddress
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		return fmt.Errorf("unable to bind address %s: %v", address, err)
+	}
+	h.echo.Listener = listener
+	h.logger.Infof("starting web server on http://%s", listener.Addr().String())
 	go func() {
-		addr := h.conf.HttpListenAddress
-		logger.Infof("starting web server on http://%s", addr)
-		if err := e.Start(addr); err != nil {
-			logger.Warnf("shutting down web server %s: %s", addr, err)
+		if err := e.StartServer(e.Server); err != nil && err != http.ErrServerClosed {
+			h.logger.Warnf("shutting down web server %s: %s", address, err)
 		}
 	}()
+
+	return nil
 }
 
-type CustomValidator struct {
+func (h *Handler) Shutdown(ctx context.Context) error {
+	return h.echo.Server.Shutdown(ctx)
+}
+
+type customValidator struct {
 	validator *validator.Validate
 }
 
-func (cv *CustomValidator) Validate(i interface{}) error {
+func (cv *customValidator) Validate(i interface{}) error {
 	return cv.validator.Struct(i)
 }
 
@@ -87,10 +101,6 @@ type Error struct {
 
 func (e Error) Error() string {
 	return e.Message
-}
-
-func InternalError() Error {
-	return Error{Message: "Internal Server Error"}
 }
 
 func ErrorMessage(message string) Error {
