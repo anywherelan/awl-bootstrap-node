@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/anywherelan/awl-bootstrap-node/api"
-	"github.com/anywherelan/awl-bootstrap-node/application/pkg"
 	"github.com/anywherelan/awl-bootstrap-node/config"
 	"github.com/anywherelan/awl/p2p"
 	"github.com/anywherelan/awl/ringbuffer"
@@ -168,7 +167,7 @@ func (a *Application) makeP2pHostConfig() p2p.HostConfig {
 	return p2p.HostConfig{
 		PrivKeyBytes:   a.Conf.PrivKey(),
 		ListenAddrs:    a.Conf.GetListenAddresses(),
-		UserAgent:      pkg.UserAgent,
+		UserAgent:      config.UserAgent,
 		BootstrapPeers: a.Conf.GetBootstrapPeers(),
 		Libp2pOpts: []libp2p.Option{
 			libp2p.EnableRelay(circuit.OptActive, circuit.OptHop),
