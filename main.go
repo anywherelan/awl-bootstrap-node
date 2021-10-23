@@ -6,8 +6,6 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-
-	"github.com/anywherelan/awl-bootstrap-node/application"
 )
 
 // @title Anywherelan bootstrap node API
@@ -20,7 +18,7 @@ import (
 //go:generate swag init --parseDependency
 //go:generate rm -f docs/docs.go docs/swagger.json
 func main() {
-	app := application.New()
+	app := New()
 	logger := app.SetupLoggerAndConfig()
 	ctx, ctxCancel := context.WithCancel(context.Background())
 
