@@ -6,8 +6,8 @@ import (
 	"runtime/pprof"
 
 	"github.com/anywherelan/awl-bootstrap-node/config"
-	"github.com/anywherelan/awl-bootstrap-node/ringbuffer"
 	"github.com/anywherelan/awl-bootstrap-node/service"
+	"github.com/anywherelan/awl/ringbuffer"
 	"github.com/go-playground/validator/v10"
 	"github.com/ipfs/go-log/v2"
 	"github.com/labstack/echo/v4"
