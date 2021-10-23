@@ -8,12 +8,22 @@ import (
 	"time"
 
 	"github.com/anywherelan/awl-bootstrap-node/api"
+	"github.com/anywherelan/awl-bootstrap-node/application/pkg"
 	"github.com/anywherelan/awl-bootstrap-node/config"
-	"github.com/anywherelan/awl-bootstrap-node/p2p"
 	"github.com/anywherelan/awl-bootstrap-node/ringbuffer"
 	"github.com/anywherelan/awl-bootstrap-node/service"
+	"github.com/anywherelan/awl/p2p"
+	ds "github.com/ipfs/go-datastore"
+	dssync "github.com/ipfs/go-datastore/sync"
+	badger "github.com/ipfs/go-ds-badger"
 	"github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p"
+	circuit "github.com/libp2p/go-libp2p-circuit"
+	"github.com/libp2p/go-libp2p-core/peerstore"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
+	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
+	"github.com/libp2p/go-libp2p/p2p/host/relay"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -26,20 +36,24 @@ type Application struct {
 	LogBuffer *ringbuffer.RingBuffer
 	logger    *log.ZapEventLogger
 	Conf      *config.Config
+	ctx       context.Context
 
 	p2pServer  *p2p.P2p
-	host       host.Host
 	P2pService *service.P2pService
 }
 
+func New() *Application {
+	return &Application{}
+}
+
 func (a *Application) Init(ctx context.Context) error {
-	p2pSrv := p2p.NewP2p(ctx, a.Conf)
-	host, err := p2pSrv.InitHost()
+	a.ctx = ctx
+	p2pSrv := p2p.NewP2p(ctx)
+	host, err := p2pSrv.InitHost(a.makeP2pHostConfig())
 	if err != nil {
 		return err
 	}
 	a.p2pServer = p2pSrv
-	a.host = host
 
 	privKey := host.Peerstore().PrivKey(host.ID())
 	a.Conf.SetIdentity(privKey, host.ID())
@@ -126,6 +140,47 @@ func (a *Application) Close() {
 	a.Conf.Save()
 }
 
-func New() *Application {
-	return &Application{}
+func (a *Application) makeP2pHostConfig() p2p.HostConfig {
+	relay.AdvertiseBootDelay = 30 * time.Second
+
+	var datastore ds.Batching
+	datastore, err := badger.NewDatastore(a.Conf.PeerstoreDir(), nil)
+	if err != nil {
+		a.logger.DPanicf("could not create badger datastore: %v", err)
+		datastore = dssync.MutexWrap(ds.NewMapDatastore())
+	}
+	var customPeerstore peerstore.Peerstore
+	customPeerstore, err = pstoreds.NewPeerstore(a.ctx, datastore, pstoreds.DefaultOpts())
+	if err != nil {
+		a.logger.DPanicf("could not create peerstore: %v", err)
+		customPeerstore = pstoremem.NewPeerstore()
+	}
+
+	return p2p.HostConfig{
+		PrivKeyBytes:   a.Conf.PrivKey(),
+		ListenAddrs:    a.Conf.GetListenAddresses(),
+		UserAgent:      pkg.UserAgent,
+		BootstrapPeers: a.Conf.GetBootstrapPeers(),
+		Libp2pOpts: []libp2p.Option{
+			libp2p.EnableRelay(circuit.OptActive, circuit.OptHop),
+			libp2p.EnableAutoRelay(),
+			libp2p.EnableNATService(),
+			libp2p.AutoNATServiceRateLimit(0, 1, 4*time.Second),
+			libp2p.ForceReachabilityPublic(),
+		},
+		ConnManager: struct {
+			LowWater    int
+			HighWater   int
+			GracePeriod time.Duration
+		}{
+			LowWater:    0,
+			HighWater:   0,
+			GracePeriod: time.Minute,
+		},
+		Peerstore:    customPeerstore,
+		DHTDatastore: datastore,
+		DHTOpts: []dht.Option{
+			dht.Mode(dht.ModeServer),
+		},
+	}
 }

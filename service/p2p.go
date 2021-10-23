@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/anywherelan/awl-bootstrap-node/config"
-	"github.com/anywherelan/awl-bootstrap-node/p2p"
+	"github.com/anywherelan/awl/p2p"
 	"github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/network"
@@ -34,13 +34,8 @@ func NewP2p(server *p2p.P2p, conf *config.Config) *P2pService {
 
 	// Protect friendly peers from disconnecting
 	conf.RLock()
-
 	for _, peerAddr := range conf.GetBootstrapPeers() {
-		peerInfo, err := peer.AddrInfoFromP2pAddr(peerAddr)
-		if err != nil {
-			continue
-		}
-		p.ProtectPeer(peerInfo.ID)
+		p.ProtectPeer(peerAddr.ID)
 	}
 	conf.RUnlock()
 
@@ -72,12 +67,8 @@ func (s *P2pService) PeerAddresses(peerID peer.ID) []string {
 func (s *P2pService) BootstrapPeersStats() (int, int) {
 	total, connected := 0, 0
 	for _, peerAddr := range s.conf.GetBootstrapPeers() {
-		peerInfo, err := peer.AddrInfoFromP2pAddr(peerAddr)
-		if err != nil {
-			continue
-		}
 		total += 1
-		if s.p2pServer.IsConnected(peerInfo.ID) {
+		if s.p2pServer.IsConnected(peerAddr.ID) {
 			connected += 1
 		}
 	}
