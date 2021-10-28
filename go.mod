@@ -3,7 +3,7 @@ module github.com/anywherelan/awl-bootstrap-node
 go 1.17
 
 require (
-	github.com/anywherelan/awl v0.4.1-0.20211023174738-9a4b54da7fe1
+	github.com/anywherelan/awl v0.4.1-0.20211028191445-fdb26d68812e
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-playground/validator/v10 v10.9.0
 	github.com/ipfs/go-datastore v0.4.6
@@ -147,4 +147,4 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
-replace github.com/ipfs/go-log/v2 => github.com/anywherelan/go-log/v2 v2.0.3-0.20210308150645-ad120b957e42
+replace github.com/ipfs/go-log/v2 => github.com/anywherelan/go-log/v2 v2.0.3-0.20211026204512-98dc57159cb7
