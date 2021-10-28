@@ -20,15 +20,6 @@ definitions:
       totalOut:
         type: string
     type: object
-  entity.BootstrapPeerDebugInfo:
-    properties:
-      connections:
-        items:
-          type: string
-        type: array
-      error:
-        type: string
-    type: object
   entity.ConnectionsDebugInfo:
     properties:
       connectedPeersCount:
@@ -46,10 +37,6 @@ definitions:
     type: object
   entity.DhtDebugInfo:
     properties:
-      bootstrapPeers:
-        additionalProperties:
-          $ref: '#/definitions/entity.BootstrapPeerDebugInfo'
-        type: object
       listenAddress:
         items:
           type: string
@@ -84,9 +71,8 @@ definitions:
 host: localhost:9090
 info:
   contact: { }
-  description: Anywherelan API
-  license: { }
-  title: Anywherelan API
+  description: Anywherelan bootstrap node API
+  title: Anywherelan bootstrap node API
   version: "0.1"
 paths:
   /debug/log:
@@ -94,7 +80,7 @@ paths:
       consumes:
         - application/json
       produces:
-        - application/json
+        - text/plain
       responses:
         "200":
           description: log text

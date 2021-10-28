@@ -8,7 +8,6 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/ipfs/go-log/v2"
-	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/multiformats/go-multiaddr"
 )
 
@@ -86,9 +85,6 @@ func setDefaults(conf *Config) {
 	}
 	if conf.P2pNode.BootstrapPeers == nil {
 		conf.P2pNode.BootstrapPeers = make([]string, 0)
-	}
-	if conf.P2pNode.DHTProtocolPrefix == "" {
-		conf.P2pNode.DHTProtocolPrefix = dht.DefaultPrefix
 	}
 
 	// Other

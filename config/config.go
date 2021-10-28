@@ -8,7 +8,6 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/mr-tron/base58/base58"
 	"github.com/multiformats/go-multiaddr"
 	"go.uber.org/zap/zapcore"
@@ -32,9 +31,8 @@ type (
 		PeerID   string
 		Identity string
 
-		BootstrapPeers    []string
-		ListenAddresses   []string
-		DHTProtocolPrefix protocol.ID
+		BootstrapPeers  []string
+		ListenAddresses []string
 	}
 )
 
@@ -70,11 +68,15 @@ func (c *Config) PrivKey() []byte {
 	return b
 }
 
-func (c *Config) GetBootstrapPeers() []multiaddr.Multiaddr {
+func (c *Config) GetBootstrapPeers() []peer.AddrInfo {
 	c.RLock()
 	allMultiaddrs := make([]multiaddr.Multiaddr, 0, len(c.P2pNode.BootstrapPeers))
 	for _, val := range c.P2pNode.BootstrapPeers {
-		newMultiaddr, _ := multiaddr.NewMultiaddr(val)
+		newMultiaddr, err := multiaddr.NewMultiaddr(val)
+		if err != nil {
+			logger.Warnf("invalid bootstrap multiaddr from config: %v", err)
+			continue
+		}
 		peerInfo, err := peer.AddrInfoFromP2pAddr(newMultiaddr)
 		if err == nil && peerInfo.ID == c.peerID {
 			continue
@@ -84,15 +86,12 @@ func (c *Config) GetBootstrapPeers() []multiaddr.Multiaddr {
 	}
 	c.RUnlock()
 
-	result := make([]multiaddr.Multiaddr, 0, len(allMultiaddrs))
-	resultMap := make(map[string]struct{}, len(allMultiaddrs))
-	for _, maddr := range allMultiaddrs {
-		if _, exists := resultMap[maddr.String()]; !exists {
-			resultMap[maddr.String()] = struct{}{}
-			result = append(result, maddr)
-		}
+	addrInfos, err := peer.AddrInfosFromP2pAddrs(allMultiaddrs...)
+	if err != nil {
+		logger.Warn("invalid one or more bootstrap addr info from config")
 	}
-	return result
+
+	return addrInfos
 }
 
 func (c *Config) SetListenAddresses(multiaddrs []multiaddr.Multiaddr) {

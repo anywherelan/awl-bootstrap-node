@@ -1,4 +1,4 @@
-package application
+package main
 
 import (
 	"context"
@@ -9,11 +9,19 @@ import (
 
 	"github.com/anywherelan/awl-bootstrap-node/api"
 	"github.com/anywherelan/awl-bootstrap-node/config"
-	"github.com/anywherelan/awl-bootstrap-node/p2p"
-	"github.com/anywherelan/awl-bootstrap-node/ringbuffer"
-	"github.com/anywherelan/awl-bootstrap-node/service"
+	"github.com/anywherelan/awl/p2p"
+	"github.com/anywherelan/awl/ringbuffer"
+	ds "github.com/ipfs/go-datastore"
+	dssync "github.com/ipfs/go-datastore/sync"
+	badger "github.com/ipfs/go-ds-badger"
 	"github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p"
+	circuit "github.com/libp2p/go-libp2p-circuit"
+	"github.com/libp2p/go-libp2p-core/peerstore"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
+	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
+	"github.com/libp2p/go-libp2p/p2p/host/relay"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -26,20 +34,24 @@ type Application struct {
 	LogBuffer *ringbuffer.RingBuffer
 	logger    *log.ZapEventLogger
 	Conf      *config.Config
+	ctx       context.Context
 
-	p2pServer  *p2p.P2p
-	host       host.Host
-	P2pService *service.P2pService
+	Api       *api.Handler
+	p2pServer *p2p.P2p
+}
+
+func New() *Application {
+	return &Application{}
 }
 
 func (a *Application) Init(ctx context.Context) error {
-	p2pSrv := p2p.NewP2p(ctx, a.Conf)
-	host, err := p2pSrv.InitHost()
+	a.ctx = ctx
+	p2pSrv := p2p.NewP2p(ctx)
+	host, err := p2pSrv.InitHost(a.makeP2pHostConfig())
 	if err != nil {
 		return err
 	}
 	a.p2pServer = p2pSrv
-	a.host = host
 
 	privKey := host.Peerstore().PrivKey(host.ID())
 	a.Conf.SetIdentity(privKey, host.ID())
@@ -51,12 +63,12 @@ func (a *Application) Init(ctx context.Context) error {
 		return err
 	}
 
-	a.P2pService = service.NewP2p(p2pSrv, a.Conf)
-
-	handler := api.NewHandler(a.Conf, a.P2pService, a.LogBuffer)
-	handler.SetupAPI()
-
-	go a.P2pService.MaintainBackgroundConnections(20)
+	handler := api.NewHandler(a.Conf, a.p2pServer, a.LogBuffer)
+	a.Api = handler
+	err = handler.SetupAPI()
+	if err != nil {
+		return fmt.Errorf("failed to setup api: %v", err)
+	}
 
 	return nil
 }
@@ -119,6 +131,14 @@ func (a *Application) SetupLoggerAndConfig() *log.ZapEventLogger {
 }
 
 func (a *Application) Close() {
+	if a.Api != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		err := a.Api.Shutdown(ctx)
+		if err != nil {
+			a.logger.Errorf("closing api server: %v", err)
+		}
+	}
 	if a.p2pServer != nil {
 		err := a.p2pServer.Close()
 		if err != nil {
@@ -128,6 +148,47 @@ func (a *Application) Close() {
 	a.Conf.Save()
 }
 
-func New() *Application {
-	return &Application{}
+func (a *Application) makeP2pHostConfig() p2p.HostConfig {
+	relay.AdvertiseBootDelay = 30 * time.Second
+
+	var datastore ds.Batching
+	datastore, err := badger.NewDatastore(a.Conf.PeerstoreDir(), nil)
+	if err != nil {
+		a.logger.DPanicf("could not create badger datastore: %v", err)
+		datastore = dssync.MutexWrap(ds.NewMapDatastore())
+	}
+	var customPeerstore peerstore.Peerstore
+	customPeerstore, err = pstoreds.NewPeerstore(a.ctx, datastore, pstoreds.DefaultOpts())
+	if err != nil {
+		a.logger.DPanicf("could not create peerstore: %v", err)
+		customPeerstore = pstoremem.NewPeerstore()
+	}
+
+	return p2p.HostConfig{
+		PrivKeyBytes:   a.Conf.PrivKey(),
+		ListenAddrs:    a.Conf.GetListenAddresses(),
+		UserAgent:      config.UserAgent,
+		BootstrapPeers: a.Conf.GetBootstrapPeers(),
+		Libp2pOpts: []libp2p.Option{
+			libp2p.EnableRelay(circuit.OptActive, circuit.OptHop),
+			libp2p.EnableAutoRelay(),
+			libp2p.EnableNATService(),
+			libp2p.AutoNATServiceRateLimit(0, 1, 4*time.Second),
+			libp2p.ForceReachabilityPublic(),
+		},
+		ConnManager: struct {
+			LowWater    int
+			HighWater   int
+			GracePeriod time.Duration
+		}{
+			LowWater:    0,
+			HighWater:   0,
+			GracePeriod: time.Minute,
+		},
+		Peerstore:    customPeerstore,
+		DHTDatastore: datastore,
+		DHTOpts: []dht.Option{
+			dht.Mode(dht.ModeServer),
+		},
+	}
 }
