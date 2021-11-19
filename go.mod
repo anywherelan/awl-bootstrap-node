@@ -3,7 +3,7 @@ module github.com/anywherelan/awl-bootstrap-node
 go 1.17
 
 require (
-	github.com/anywherelan/awl v0.4.1-0.20211028191445-fdb26d68812e
+	github.com/anywherelan/awl v0.4.1-0.20211119100126-82aa54343b11
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-playground/validator/v10 v10.9.0
 	github.com/ipfs/go-datastore v0.4.6
@@ -14,6 +14,7 @@ require (
 	github.com/libp2p/go-libp2p-circuit v0.4.0
 	github.com/libp2p/go-libp2p-core v0.9.0
 	github.com/libp2p/go-libp2p-kad-dht v0.13.1
+	github.com/libp2p/go-libp2p-kbucket v0.4.7
 	github.com/libp2p/go-libp2p-peerstore v0.3.0
 	github.com/mr-tron/base58 v1.2.0
 	github.com/multiformats/go-multiaddr v0.4.1
@@ -72,7 +73,6 @@ require (
 	github.com/libp2p/go-libp2p-blankhost v0.2.0 // indirect
 	github.com/libp2p/go-libp2p-connmgr v0.2.4 // indirect
 	github.com/libp2p/go-libp2p-discovery v0.5.1 // indirect
-	github.com/libp2p/go-libp2p-kbucket v0.4.7 // indirect
 	github.com/libp2p/go-libp2p-mplex v0.4.1 // indirect
 	github.com/libp2p/go-libp2p-nat v0.0.6 // indirect
 	github.com/libp2p/go-libp2p-noise v0.2.2 // indirect
@@ -141,7 +141,7 @@ require (
 	golang.org/x/sys v0.0.0-20210927094055-39ccf1dd6fa6 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20201208040808-7e3f01d25324 // indirect
-	golang.org/x/tools v0.1.5 // indirect
+	golang.org/x/tools v0.1.8-0.20211022200916-316ba0b74098 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

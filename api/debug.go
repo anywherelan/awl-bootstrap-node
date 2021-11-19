@@ -7,6 +7,7 @@ import (
 	"sort"
 	"unicode/utf8"
 
+	"github.com/anywherelan/awl-bootstrap-node/config"
 	"github.com/anywherelan/awl-bootstrap-node/entity"
 	"github.com/labstack/echo/v4"
 	"github.com/libp2p/go-libp2p-core/metrics"
@@ -23,19 +24,20 @@ func (h *Handler) GetP2pDebugInfo(c echo.Context) (err error) {
 	metricsByProtocol := h.p2p.NetworkStatsByProtocol()
 	bandwidthByProtocol := make(map[string]entity.BandwidthInfo, len(metricsByProtocol))
 	for key, val := range metricsByProtocol {
-		bandwidthByProtocol[string(key)] = makeBandwidthInfo(val)
+		bandwidthByProtocol[string(key)] = convertToBandwidthInfo(val)
 	}
 
 	debugInfo := entity.P2pDebugInfo{
 		General: entity.GeneralDebugInfo{
-			Uptime: h.p2p.Uptime().String(),
+			Version: config.Version,
+			Uptime:  h.p2p.Uptime().String(),
 		},
 		DHT: entity.DhtDebugInfo{
-			RoutingTableSize:    h.p2p.RoutingTableSize(),
-			Reachability:        h.p2p.Reachability().String(),
-			ListenAddress:       maToStrings(h.p2p.AnnouncedAs()),
-			PeersWithAddrsCount: h.p2p.PeersWithAddrsCount(),
-			ObservedAddrs:       maToStrings(h.p2p.OwnObservedAddrs()),
+			RoutingTableSize: h.p2p.RoutingTableSize(),
+			RoutingTable:     h.p2p.RoutingTablePeers(),
+			Reachability:     h.p2p.Reachability().String(),
+			ListenAddress:    maToStrings(h.p2p.AnnouncedAs()),
+			ObservedAddrs:    maToStrings(h.p2p.OwnObservedAddrs()),
 		},
 		Connections: entity.ConnectionsDebugInfo{
 			ConnectedPeersCount:  h.p2p.ConnectedPeersCount(),
@@ -46,10 +48,10 @@ func (h *Handler) GetP2pDebugInfo(c echo.Context) (err error) {
 			LastTrimAgo:          h.p2p.ConnectionsLastTrimAgo().String(),
 		},
 		Bandwidth: entity.BandwidthDebugInfo{
-			Total:      makeBandwidthInfo(h.p2p.NetworkStats()),
+			Total:      convertToBandwidthInfo(h.p2p.NetworkStats()),
 			ByProtocol: bandwidthByProtocol,
-			//ByPeer:     h.p2p.NetworkStatsByPeer(),
 		},
+		Peerstore: h.makePeerstoreDebugInfo(),
 	}
 
 	return c.JSONPretty(http.StatusOK, debugInfo, "    ")
@@ -69,7 +71,36 @@ func (h *Handler) GetLog(c echo.Context) (err error) {
 	return c.Blob(http.StatusOK, echo.MIMETextPlainCharsetUTF8, b)
 }
 
-func makeBandwidthInfo(stats metrics.Stats) entity.BandwidthInfo {
+func (h *Handler) makePeerstoreDebugInfo() entity.PeerstoreDebugInfo {
+	peerstore := h.p2p.Host().Peerstore()
+	info := entity.PeerstoreDebugInfo{
+		PeersWithAddrsCount: len(peerstore.PeersWithAddrs()),
+		PeersWithKeysCount:  len(peerstore.PeersWithKeys()),
+		Peers:               make(map[string]entity.Peer),
+	}
+
+	peers := peerstore.Peers()
+	for _, peerID := range peers {
+		protocols, _ := peerstore.GetProtocols(peerID)
+		if protocols == nil {
+			protocols = []string{}
+		}
+
+		info.Peers[peerID.String()] = entity.Peer{
+			IsConnected:     h.p2p.IsConnected(peerID),
+			UserAgent:       h.p2p.PeerUserAgent(peerID),
+			Bandwidth:       convertToBandwidthInfo(h.p2p.NetworkStatsForPeer(peerID)),
+			ConnectionsInfo: h.p2p.PeerConnectionsInfo(peerID),
+			LatencyMs:       peerstore.LatencyEWMA(peerID).Milliseconds(),
+			Protocols:       protocols,
+			PeerstoreAddrs:  maToStrings(peerstore.Addrs(peerID)),
+		}
+	}
+
+	return info
+}
+
+func convertToBandwidthInfo(stats metrics.Stats) entity.BandwidthInfo {
 	return entity.BandwidthInfo{
 		TotalIn:  byteCountIEC(stats.TotalIn),
 		TotalOut: byteCountIEC(stats.TotalOut),
