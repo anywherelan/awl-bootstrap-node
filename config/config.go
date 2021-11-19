@@ -33,6 +33,8 @@ type (
 
 		BootstrapPeers  []string
 		ListenAddresses []string
+
+		ExchangeIdentityWithPeersInBackground bool
 	}
 )
 
