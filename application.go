@@ -17,6 +17,8 @@ import (
 	"github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
 	circuit "github.com/libp2p/go-libp2p-circuit"
+	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
@@ -70,6 +72,10 @@ func (a *Application) Init(ctx context.Context) error {
 		return fmt.Errorf("failed to setup api: %v", err)
 	}
 
+	if a.Conf.P2pNode.ExchangeIdentityWithPeersInBackground {
+		a.exchangeIdentityWithPeersInBackground(p2pSrv)
+	}
+
 	return nil
 }
 
@@ -102,22 +108,13 @@ func (a *Application) SetupLoggerAndConfig() *log.ZapEventLogger {
 	}
 
 	log.SetupLogging(zapCore, func(name string) zapcore.Level {
-		switch {
-		case strings.HasPrefix(name, "awl"):
+		if strings.HasPrefix(name, "awl") {
 			return lvl
-		case name == "swarm2":
-			// TODO решить какой выставлять
-			//return zapcore.InfoLevel // REMOVE
-			return zapcore.ErrorLevel
-		case name == "relay":
-			return zapcore.WarnLevel
-			//return zapcore.ErrorLevel
-		case name == "connmgr":
-			return zapcore.WarnLevel
-		case name == "autonat":
+		}
+		switch name {
+		case "swarm2", "relay", "connmgr", "autonat":
 			return zapcore.WarnLevel
 		default:
-			//return lvl
 			return zapcore.InfoLevel
 		}
 	},
@@ -191,4 +188,42 @@ func (a *Application) makeP2pHostConfig() p2p.HostConfig {
 			dht.Mode(dht.ModeServer),
 		},
 	}
+}
+
+func (a *Application) exchangeIdentityWithPeersInBackground(p2pSrv *p2p.P2p) {
+	checkPeer := func(id peer.ID) bool {
+		return len(p2pSrv.Host().Peerstore().Addrs(id)) != 0
+	}
+	p2pSrv.SubscribeConnectionEvents(func(_ network.Network, conn network.Conn) {
+		id := conn.RemotePeer()
+		if checkPeer(id) {
+			return
+		}
+		p2pSrv.IDService().IdentifyWait(conn)
+	}, nil)
+
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-a.ctx.Done():
+				return
+			case <-ticker.C:
+				// ok
+			}
+
+			allConns := p2pSrv.Host().Network().Conns()
+			for _, conn := range allConns {
+				id := conn.RemotePeer()
+				if checkPeer(id) {
+					continue
+				}
+
+				// TODO: try to remove peer from IDService before re-identifying
+				p2pSrv.IDService().IdentifyWait(conn)
+			}
+		}
+	}()
 }

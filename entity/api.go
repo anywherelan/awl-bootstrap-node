@@ -1,5 +1,10 @@
 package entity
 
+import (
+	"github.com/anywherelan/awl/p2p"
+	kbucket "github.com/libp2p/go-libp2p-kbucket"
+)
+
 // Requests
 
 // Responses
@@ -8,18 +13,20 @@ type (
 		General     GeneralDebugInfo
 		DHT         DhtDebugInfo
 		Connections ConnectionsDebugInfo
+		Peerstore   PeerstoreDebugInfo
 		Bandwidth   BandwidthDebugInfo
 	}
 
 	GeneralDebugInfo struct {
-		Uptime string
+		Version string
+		Uptime  string
 	}
 	DhtDebugInfo struct {
-		RoutingTableSize    int
-		Reachability        string
-		ListenAddress       []string
-		PeersWithAddrsCount int
-		ObservedAddrs       []string
+		RoutingTableSize int
+		RoutingTable     []kbucket.PeerInfo
+		Reachability     string
+		ListenAddress    []string
+		ObservedAddrs    []string
 	}
 	BootstrapPeerDebugInfo struct {
 		Error       string
@@ -36,8 +43,23 @@ type (
 	BandwidthDebugInfo struct {
 		Total      BandwidthInfo
 		ByProtocol map[string]BandwidthInfo
-		//ByPeer     map[peer.ID]metrics.Stats
 	}
+
+	PeerstoreDebugInfo struct {
+		PeersWithAddrsCount int
+		PeersWithKeysCount  int
+		Peers               map[string]Peer
+	}
+	Peer struct {
+		IsConnected     bool
+		UserAgent       string
+		Bandwidth       BandwidthInfo
+		ConnectionsInfo []p2p.ConnectionInfo
+		LatencyMs       int64
+		Protocols       []string
+		PeerstoreAddrs  []string
+	}
+
 	BandwidthInfo struct {
 		TotalIn  string
 		TotalOut string
