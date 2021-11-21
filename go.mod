@@ -3,7 +3,7 @@ module github.com/anywherelan/awl-bootstrap-node
 go 1.17
 
 require (
-	github.com/anywherelan/awl v0.4.1-0.20211119100126-82aa54343b11
+	github.com/anywherelan/awl v0.4.1-0.20211121115225-f642bcb07b94
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-playground/validator/v10 v10.9.0
 	github.com/ipfs/go-datastore v0.4.6
