@@ -1,13 +1,13 @@
 package config
 
 import (
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"sync"
 
 	"github.com/ghodss/yaml"
-	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/mr-tron/base58/base58"
 	"github.com/multiformats/go-multiaddr"
 	"go.uber.org/zap/zapcore"
@@ -50,7 +50,7 @@ func (c *Config) SetIdentity(key crypto.PrivKey, id peer.ID) {
 	identity := base58.Encode(by)
 
 	c.P2pNode.Identity = identity
-	c.P2pNode.PeerID = id.Pretty()
+	c.P2pNode.PeerID = id.String()
 	c.peerID = id
 	c.save()
 	c.Unlock()
@@ -146,7 +146,7 @@ func (c *Config) save() {
 		logger.DPanicf("Marshal config: %v", err)
 	}
 	path := c.Path()
-	err = ioutil.WriteFile(path, data, filesPerm)
+	err = os.WriteFile(path, data, filesPerm)
 	if err != nil {
 		logger.DPanicf("Save config: %v", err)
 	}
