@@ -36,8 +36,6 @@ type (
 		ConnectedPeersCount  int
 		OpenConnectionsCount int
 		OpenStreamsCount     int64
-		TotalStreamsInbound  int64
-		TotalStreamsOutbound int64
 		LastTrimAgo          string
 	}
 	BandwidthDebugInfo struct {

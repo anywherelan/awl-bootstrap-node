@@ -1,7 +1,6 @@
 package config
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -13,7 +12,6 @@ import (
 
 const (
 	filesPerm = 0600
-	dirsPerm  = 0700
 )
 
 var logger = log.Logger("awl/config")
@@ -50,7 +48,7 @@ func NewConfig() *Config {
 func LoadConfig() (*Config, error) {
 	dataDir := CalcAppDataDir()
 	configPath := filepath.Join(dataDir, AppConfigFilename)
-	data, err := ioutil.ReadFile(configPath)
+	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, err
 	}
@@ -70,8 +68,8 @@ func setDefaults(conf *Config) {
 		for _, s := range []string{
 			"/ip4/0.0.0.0/tcp/0",
 			"/ip6/::/tcp/0",
-			"/ip4/0.0.0.0/udp/0/quic",
-			"/ip6/::/udp/0/quic",
+			"/ip4/0.0.0.0/udp/0/quic-v1",
+			"/ip6/::/udp/0/quic-v1",
 		} {
 			addr, err := multiaddr.NewMultiaddr(s)
 			if err != nil {

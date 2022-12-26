@@ -16,14 +16,13 @@ import (
 	badger "github.com/ipfs/go-ds-badger"
 	"github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
-	circuit "github.com/libp2p/go-libp2p-circuit"
-	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/peerstore"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
-	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
-	"github.com/libp2p/go-libp2p/p2p/host/relay"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/peerstore"
+	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
+	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoremem"
+	"github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -146,8 +145,6 @@ func (a *Application) Close() {
 }
 
 func (a *Application) makeP2pHostConfig() p2p.HostConfig {
-	relay.AdvertiseBootDelay = 30 * time.Second
-
 	var datastore ds.Batching
 	datastore, err := badger.NewDatastore(a.Conf.PeerstoreDir(), nil)
 	if err != nil {
@@ -158,7 +155,29 @@ func (a *Application) makeP2pHostConfig() p2p.HostConfig {
 	customPeerstore, err = pstoreds.NewPeerstore(a.ctx, datastore, pstoreds.DefaultOpts())
 	if err != nil {
 		a.logger.DPanicf("could not create peerstore: %v", err)
-		customPeerstore = pstoremem.NewPeerstore()
+		customPeerstore, err = pstoremem.NewPeerstore()
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	relayResourcesCfg := relay.Resources{
+		Limit: &relay.RelayLimit{
+			Duration: 2 * time.Minute,
+			// the same as in `backgroundOutboundHandler` func in awl/service/tunnel.go
+			Data: 1024 * 1024 * (8 + 1),
+		},
+
+		ReservationTTL: time.Hour,
+
+		MaxReservations: 512,
+		MaxCircuits:     16,
+		// vpn interface MTU + protocol message size packet
+		BufferSize: 3500 + 8,
+
+		MaxReservationsPerPeer: 8,
+		MaxReservationsPerIP:   8,
+		MaxReservationsPerASN:  32,
 	}
 
 	return p2p.HostConfig{
@@ -167,10 +186,11 @@ func (a *Application) makeP2pHostConfig() p2p.HostConfig {
 		UserAgent:      config.UserAgent,
 		BootstrapPeers: a.Conf.GetBootstrapPeers(),
 		Libp2pOpts: []libp2p.Option{
-			libp2p.EnableRelay(circuit.OptActive, circuit.OptHop),
-			libp2p.EnableAutoRelay(),
+			libp2p.EnableRelay(),
+			libp2p.EnableRelayService(relay.WithResources(relayResourcesCfg)),
+			libp2p.EnableHolePunching(),
 			libp2p.EnableNATService(),
-			libp2p.AutoNATServiceRateLimit(0, 1, 4*time.Second),
+			libp2p.AutoNATServiceRateLimit(0, 2, time.Second),
 			libp2p.ForceReachabilityPublic(),
 		},
 		ConnManager: struct {
