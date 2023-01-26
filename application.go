@@ -22,6 +22,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoremem"
+	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
 	"github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -161,6 +162,12 @@ func (a *Application) makeP2pHostConfig() p2p.HostConfig {
 		}
 	}
 
+	resourceLimitsConfig := rcmgr.InfiniteLimits
+	mgr, err := rcmgr.NewResourceManager(rcmgr.NewFixedLimiter(resourceLimitsConfig))
+	if err != nil {
+		panic(err)
+	}
+
 	relayResourcesCfg := relay.Resources{
 		Limit: &relay.RelayLimit{
 			Duration: 2 * time.Minute,
@@ -192,6 +199,7 @@ func (a *Application) makeP2pHostConfig() p2p.HostConfig {
 			libp2p.EnableNATService(),
 			libp2p.AutoNATServiceRateLimit(0, 2, time.Second),
 			libp2p.ForceReachabilityPublic(),
+			libp2p.ResourceManager(mgr),
 		},
 		ConnManager: struct {
 			LowWater    int
