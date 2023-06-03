@@ -70,3 +70,9 @@ fabric.properties
 /node_modules/
 /vendor/
 /static/
+
+
+# ours
+peerstore
+awl-bootstrap-node
+config.yaml

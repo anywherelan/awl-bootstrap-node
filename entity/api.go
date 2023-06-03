@@ -3,6 +3,7 @@ package entity
 import (
 	"github.com/anywherelan/awl/p2p"
 	kbucket "github.com/libp2p/go-libp2p-kbucket"
+	"github.com/libp2p/go-libp2p/core/protocol"
 )
 
 // Requests
@@ -28,10 +29,6 @@ type (
 		ListenAddress    []string
 		ObservedAddrs    []string
 	}
-	BootstrapPeerDebugInfo struct {
-		Error       string
-		Connections []string
-	}
 	ConnectionsDebugInfo struct {
 		ConnectedPeersCount  int
 		OpenConnectionsCount int
@@ -54,7 +51,7 @@ type (
 		Bandwidth       BandwidthInfo
 		ConnectionsInfo []p2p.ConnectionInfo
 		LatencyMs       int64
-		Protocols       []string
+		Protocols       []protocol.ID
 		PeerstoreAddrs  []string
 	}
 
