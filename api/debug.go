@@ -11,6 +11,7 @@ import (
 	"github.com/anywherelan/awl-bootstrap-node/entity"
 	"github.com/labstack/echo/v4"
 	"github.com/libp2p/go-libp2p/core/metrics"
+	"github.com/libp2p/go-libp2p/core/protocol"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
@@ -81,7 +82,7 @@ func (h *Handler) makePeerstoreDebugInfo() entity.PeerstoreDebugInfo {
 	for _, peerID := range peers {
 		protocols, _ := peerstore.GetProtocols(peerID)
 		if protocols == nil {
-			protocols = []string{}
+			protocols = []protocol.ID{}
 		}
 
 		info.Peers[peerID.String()] = entity.Peer{
