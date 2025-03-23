@@ -7,8 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anywherelan/awl-bootstrap-node/api"
-	"github.com/anywherelan/awl-bootstrap-node/config"
 	"github.com/anywherelan/awl/p2p"
 	"github.com/anywherelan/awl/ringbuffer"
 	ds "github.com/ipfs/go-datastore"
@@ -26,10 +24,13 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
+	"github.com/anywherelan/awl-bootstrap-node/api"
+	"github.com/anywherelan/awl-bootstrap-node/config"
 )
 
 const (
-	logBufSize = 30 * 1024
+	logBufSize = 256 * 1024
 )
 
 type Application struct {
@@ -197,6 +198,7 @@ func (a *Application) makeP2pHostConfig() p2p.HostConfig {
 			libp2p.EnableRelayService(relay.WithResources(relayResourcesCfg)),
 			libp2p.EnableHolePunching(),
 			libp2p.EnableNATService(),
+			libp2p.EnableAutoNATv2(),
 			libp2p.AutoNATServiceRateLimit(0, 2, time.Second),
 			libp2p.ForceReachabilityPublic(),
 			libp2p.ResourceManager(mgr),
@@ -244,6 +246,10 @@ func (a *Application) exchangeIdentityWithPeersInBackground(p2pSrv *p2p.P2p) {
 
 			allConns := p2pSrv.Host().Network().Conns()
 			for _, conn := range allConns {
+				if a.ctx.Err() != nil {
+					return
+				}
+
 				id := conn.RemotePeer()
 				if checkPeer(id) {
 					continue
