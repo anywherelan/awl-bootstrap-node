@@ -1,11 +1,9 @@
 package config
 
 import (
-	"os"
 	"path/filepath"
 	"sync"
 
-	"github.com/ghodss/yaml"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/mr-tron/base58/base58"
@@ -16,7 +14,7 @@ import (
 const (
 	AppConfigFilename         = "config.yaml"
 	DhtPeerstoreDataDirectory = "peerstore"
-	DefaultHTTPPort           = 9090
+	DefaultHTTPPort           = 9010
 )
 
 type (
@@ -25,7 +23,6 @@ type (
 		P2pNode           P2pNode
 		LoggerLevel       string
 		HttpListenAddress string
-		peerID            peer.ID
 	}
 	P2pNode struct {
 		PeerID   string
@@ -38,12 +35,6 @@ type (
 	}
 )
 
-func (c *Config) Save() {
-	c.RLock()
-	c.save()
-	c.RUnlock()
-}
-
 func (c *Config) SetIdentity(key crypto.PrivKey, id peer.ID) {
 	c.Lock()
 	by, _ := key.Raw()
@@ -51,8 +42,6 @@ func (c *Config) SetIdentity(key crypto.PrivKey, id peer.ID) {
 
 	c.P2pNode.Identity = identity
 	c.P2pNode.PeerID = id.String()
-	c.peerID = id
-	c.save()
 	c.Unlock()
 }
 
@@ -72,6 +61,12 @@ func (c *Config) PrivKey() []byte {
 
 func (c *Config) GetBootstrapPeers() []peer.AddrInfo {
 	c.RLock()
+
+	myPeerID, err := peer.Decode(c.P2pNode.PeerID)
+	if err != nil {
+		logger.DPanicf("Invalid hex-encoded multihash representing of a P2pNode.PeerID '%s': %v", c.P2pNode.PeerID, err)
+	}
+
 	allMultiaddrs := make([]multiaddr.Multiaddr, 0, len(c.P2pNode.BootstrapPeers))
 	for _, val := range c.P2pNode.BootstrapPeers {
 		newMultiaddr, err := multiaddr.NewMultiaddr(val)
@@ -80,7 +75,7 @@ func (c *Config) GetBootstrapPeers() []peer.AddrInfo {
 			continue
 		}
 		peerInfo, err := peer.AddrInfoFromP2pAddr(newMultiaddr)
-		if err == nil && peerInfo.ID == c.peerID {
+		if err == nil && myPeerID != "" && peerInfo.ID == myPeerID {
 			continue
 		}
 
@@ -138,16 +133,4 @@ func (c *Config) LogLevel() zapcore.Level {
 
 func (c *Config) DevMode() bool {
 	return c.LoggerLevel == "dev"
-}
-
-func (c *Config) save() {
-	data, err := yaml.Marshal(c)
-	if err != nil {
-		logger.DPanicf("Marshal config: %v", err)
-	}
-	path := c.Path()
-	err = os.WriteFile(path, data, filesPerm)
-	if err != nil {
-		logger.DPanicf("Save config: %v", err)
-	}
 }
