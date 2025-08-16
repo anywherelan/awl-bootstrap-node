@@ -112,4 +112,12 @@ func generateExampleConfig(configName string) {
 	}
 
 	fmt.Printf("Generated example config file: %s\n", configName)
+
+	fmt.Printf("Below are addresses that can be used to connect to this bootstrap node\n")
+	fmt.Printf("Replace 127.0.0.1 or ::1 with the appropriate IP address. If you don't have IPv6 support, just skip it\n\n")
+
+	fmt.Printf("/ip4/127.0.0.1/tcp/6150/p2p/%s\n", conf.P2pNode.PeerID)
+	fmt.Printf("/ip4/127.0.0.1/udp/6150/quic-v1/p2p/%s\n", conf.P2pNode.PeerID)
+	fmt.Printf("/ip6/::1/tcp/7250/p2p/%s\n", conf.P2pNode.PeerID)
+	fmt.Printf("/ip6/::1/udp/7250/quic-v1/p2p/%s\n", conf.P2pNode.PeerID)
 }
