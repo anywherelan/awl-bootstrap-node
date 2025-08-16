@@ -1,10 +1,12 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 
+	"github.com/anywherelan/awl/config"
 	"github.com/ghodss/yaml"
 	"github.com/ipfs/go-log/v2"
 	"github.com/multiformats/go-multiaddr"
@@ -45,6 +47,18 @@ func NewConfig() *Config {
 	return conf
 }
 
+func NewExampleConfig() *Config {
+	conf := &Config{}
+	setDefaults(conf)
+
+	for _, peer := range config.DefaultBootstrapPeers {
+		addr := peer.String()
+		conf.P2pNode.BootstrapPeers = append(conf.P2pNode.BootstrapPeers, addr)
+	}
+
+	return conf
+}
+
 func LoadConfig() (*Config, error) {
 	dataDir := CalcAppDataDir()
 	configPath := filepath.Join(dataDir, AppConfigFilename)
@@ -61,15 +75,29 @@ func LoadConfig() (*Config, error) {
 	return conf, nil
 }
 
+func SaveConfig(conf *Config, path string) error {
+	data, err := yaml.Marshal(conf)
+	if err != nil {
+		return fmt.Errorf("marshal config: %v", err)
+	}
+
+	err = os.WriteFile(path, data, filesPerm)
+	if err != nil {
+		return fmt.Errorf("save config: %v", err)
+	}
+
+	return nil
+}
+
 func setDefaults(conf *Config) {
 	// P2pNode
 	if len(conf.P2pNode.ListenAddresses) == 0 {
 		multiaddrs := make([]multiaddr.Multiaddr, 0, 4)
 		for _, s := range []string{
-			"/ip4/0.0.0.0/tcp/0",
-			"/ip6/::/tcp/0",
-			"/ip4/0.0.0.0/udp/0/quic-v1",
-			"/ip6/::/udp/0/quic-v1",
+			"/ip4/0.0.0.0/tcp/6150",
+			"/ip6/::/tcp/7250",
+			"/ip4/0.0.0.0/udp/6150/quic-v1",
+			"/ip6/::/udp/7250/quic-v1",
 		} {
 			addr, err := multiaddr.NewMultiaddr(s)
 			if err != nil {

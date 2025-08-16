@@ -49,15 +49,17 @@ func New() *Application {
 
 func (a *Application) Init(ctx context.Context) error {
 	a.ctx = ctx
+	p2pHostConfig, err := a.makeP2pHostConfig()
+	if err != nil {
+		return fmt.Errorf("could not make p2p host config: %s", err)
+	}
 	p2pSrv := p2p.NewP2p(ctx)
-	host, err := p2pSrv.InitHost(a.makeP2pHostConfig())
+	host, err := p2pSrv.InitHost(p2pHostConfig)
 	if err != nil {
 		return err
 	}
 	a.p2pServer = p2pSrv
 
-	privKey := host.Peerstore().PrivKey(host.ID())
-	a.Conf.SetIdentity(privKey, host.ID())
 	a.logger.Infof("Host created. We are: %s", host.ID().String())
 	a.logger.Infof("Listen interfaces: %v", host.Addrs())
 
@@ -143,10 +145,19 @@ func (a *Application) Close() {
 			a.logger.Errorf("closing p2p server: %v", err)
 		}
 	}
-	a.Conf.Save()
 }
 
-func (a *Application) makeP2pHostConfig() p2p.HostConfig {
+func (a *Application) makeP2pHostConfig() (p2p.HostConfig, error) {
+	privKey := a.Conf.PrivKey()
+	if privKey == nil {
+		return p2p.HostConfig{}, fmt.Errorf("empty P2pNode.Identity in config")
+	}
+
+	listenAddrs := a.Conf.GetListenAddresses()
+	if len(listenAddrs) == 0 {
+		return p2p.HostConfig{}, fmt.Errorf("zero P2pNode.ListenAddresses in config")
+	}
+
 	var datastore ds.Batching
 	datastore, err := badger.NewDatastore(a.Conf.PeerstoreDir(), nil)
 	if err != nil {
@@ -189,8 +200,8 @@ func (a *Application) makeP2pHostConfig() p2p.HostConfig {
 	}
 
 	return p2p.HostConfig{
-		PrivKeyBytes:   a.Conf.PrivKey(),
-		ListenAddrs:    a.Conf.GetListenAddresses(),
+		PrivKeyBytes:   privKey,
+		ListenAddrs:    listenAddrs,
 		UserAgent:      config.UserAgent,
 		BootstrapPeers: a.Conf.GetBootstrapPeers(),
 		Libp2pOpts: []libp2p.Option{
@@ -217,7 +228,7 @@ func (a *Application) makeP2pHostConfig() p2p.HostConfig {
 		DHTOpts: []dht.Option{
 			dht.Mode(dht.ModeServer),
 		},
-	}
+	}, nil
 }
 
 func (a *Application) exchangeIdentityWithPeersInBackground(p2pSrv *p2p.P2p) {
