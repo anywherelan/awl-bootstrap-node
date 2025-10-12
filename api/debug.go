@@ -7,12 +7,13 @@ import (
 	"sort"
 	"unicode/utf8"
 
-	"github.com/anywherelan/awl-bootstrap-node/config"
-	"github.com/anywherelan/awl-bootstrap-node/entity"
 	"github.com/labstack/echo/v4"
 	"github.com/libp2p/go-libp2p/core/metrics"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	ma "github.com/multiformats/go-multiaddr"
+
+	"github.com/anywherelan/awl-bootstrap-node/config"
+	"github.com/anywherelan/awl-bootstrap-node/entity"
 )
 
 // @Tags Debug
@@ -39,6 +40,7 @@ func (h *Handler) GetP2pDebugInfo(c echo.Context) (err error) {
 			Reachability:     h.p2p.Reachability().String(),
 			ListenAddress:    maToStrings(h.p2p.AnnouncedAs()),
 			ObservedAddrs:    maToStrings(h.p2p.OwnObservedAddrs()),
+			BootstrapPeers:   h.p2p.BootstrapPeersStatsDetailed(),
 		},
 		Connections: entity.ConnectionsDebugInfo{
 			ConnectedPeersCount:  h.p2p.ConnectedPeersCount(),

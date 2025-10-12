@@ -28,6 +28,7 @@ type (
 		Reachability     string
 		ListenAddress    []string
 		ObservedAddrs    []string
+		BootstrapPeers   map[string]p2p.BootstrapPeerDebugInfo
 	}
 	ConnectionsDebugInfo struct {
 		ConnectedPeersCount  int

@@ -93,8 +93,9 @@ func generateExampleConfig(configName string) {
 	peerstore, _ := pstoremem.NewPeerstore()
 	p2pSrv := p2p.NewP2p(context.Background())
 	host, err := p2pSrv.InitHost(p2p.HostConfig{
-		Peerstore:    peerstore,
-		DHTDatastore: dssync.MutexWrap(ds.NewMapDatastore()),
+		AllowEmptyBootstrapPeers: true,
+		Peerstore:                peerstore,
+		DHTDatastore:             dssync.MutexWrap(ds.NewMapDatastore()),
 	})
 	if err != nil {
 		fmt.Printf("Error initializing test host: %s\n", err)
