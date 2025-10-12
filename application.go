@@ -200,10 +200,11 @@ func (a *Application) makeP2pHostConfig() (p2p.HostConfig, error) {
 	}
 
 	return p2p.HostConfig{
-		PrivKeyBytes:   privKey,
-		ListenAddrs:    listenAddrs,
-		UserAgent:      config.UserAgent,
-		BootstrapPeers: a.Conf.GetBootstrapPeers(),
+		PrivKeyBytes:             privKey,
+		ListenAddrs:              listenAddrs,
+		UserAgent:                config.UserAgent,
+		BootstrapPeers:           a.Conf.GetBootstrapPeers(),
+		AllowEmptyBootstrapPeers: true,
 		Libp2pOpts: []libp2p.Option{
 			libp2p.EnableRelay(),
 			libp2p.EnableRelayService(relay.WithResources(relayResourcesCfg)),
