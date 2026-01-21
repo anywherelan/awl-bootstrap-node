@@ -184,7 +184,7 @@ func (a *Application) makeP2pHostConfig() (p2p.HostConfig, error) {
 		Limit: &relay.RelayLimit{
 			Duration: 2 * time.Minute,
 			// the same as in `backgroundOutboundHandler` func in awl/service/tunnel.go
-			Data: (1024 * 1024 * (8 + 1)) * 2,
+			Data: (20 + 1) << 20,
 		},
 
 		ReservationTTL: time.Hour,
@@ -194,9 +194,8 @@ func (a *Application) makeP2pHostConfig() (p2p.HostConfig, error) {
 		// vpn interface MTU + protocol message size packet
 		BufferSize: 3500 + 8,
 
-		MaxReservationsPerPeer: 8,
-		MaxReservationsPerIP:   8,
-		MaxReservationsPerASN:  32,
+		MaxReservationsPerIP:  8,
+		MaxReservationsPerASN: 32,
 	}
 
 	return p2p.HostConfig{

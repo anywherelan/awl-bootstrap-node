@@ -27,7 +27,9 @@ type (
 		RoutingTable     []kbucket.PeerInfo
 		Reachability     string
 		ListenAddress    []string
-		ObservedAddrs    []string
+		ReachableAddrs   []string
+		UnreachableAddrs []string
+		UnknownAddrs     []string
 		BootstrapPeers   map[string]p2p.BootstrapPeerDebugInfo
 	}
 	ConnectionsDebugInfo struct {
