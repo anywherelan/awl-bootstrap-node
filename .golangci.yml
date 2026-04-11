@@ -1,0 +1,88 @@
+version: "2"
+run:
+  go: "1.26"
+
+linters:
+  default: none
+  enable:
+    - asciicheck
+    - bodyclose
+    - copyloopvar
+    - dogsled
+    - dupl
+    - errcheck
+    - exhaustive
+    - goconst
+    - gocritic
+    - gocyclo
+    - goprintffuncname
+    - gosec
+    - govet
+    - ineffassign
+    - mirror
+    - misspell
+    - nakedret
+    - nestif
+    - nilnil
+    - nolintlint
+    - nosprintfhostport
+    - prealloc
+    - rowserrcheck
+    - sqlclosecheck
+    - staticcheck
+    - unconvert
+    - unparam
+    - unused
+    - wastedassign
+    - whitespace
+
+  settings:
+    exhaustive:
+      default-signifies-exhaustive: true
+    gocritic:
+      disabled-checks:
+        - hugeParam
+        - rangeValCopy
+        - ifElseChain
+      enabled-tags:
+        - diagnostic
+        - performance
+    prealloc:
+      simple: true
+      range-loops: true
+      for-loops: true
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - errcheck
+          - goconst
+        path: _test\.go
+      - linters:
+          - gosec
+        text: 'G101:'
+      - linters:
+          - gosec
+        text: 'G404:'
+      - linters:
+          - gosec
+        text: 'G115:'
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+
+formatters:
+  enable:
+    - gofmt
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

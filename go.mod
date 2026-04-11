@@ -1,6 +1,6 @@
 module github.com/anywherelan/awl-bootstrap-node
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/anywherelan/awl v0.15.0

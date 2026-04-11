@@ -18,7 +18,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
-	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
+	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds" //nolint:staticcheck // disk-backed peerstore is intentional for bootstrap-node; will migrate when libp2p removes it
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoremem"
 	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
 	"github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
@@ -41,6 +41,7 @@ type Application struct {
 
 	Api       *api.Handler
 	p2pServer *p2p.P2p
+	datastore ds.Batching
 }
 
 func New() *Application {
@@ -53,6 +54,7 @@ func (a *Application) Init(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("could not make p2p host config: %s", err)
 	}
+	a.datastore = p2pHostConfig.DHTDatastore
 	p2pSrv := p2p.NewP2p(ctx)
 	host, err := p2pSrv.InitHost(p2pHostConfig)
 	if err != nil {
@@ -143,6 +145,12 @@ func (a *Application) Close() {
 		err := a.p2pServer.Close()
 		if err != nil {
 			a.logger.Errorf("closing p2p server: %v", err)
+		}
+	}
+	if a.datastore != nil {
+		err := a.datastore.Close()
+		if err != nil {
+			a.logger.Errorf("closing datastore: %v", err)
 		}
 	}
 }

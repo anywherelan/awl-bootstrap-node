@@ -1,0 +1,40 @@
+name: Test
+on: [ push, pull_request ]
+jobs:
+  test:
+    # run job on all pushes OR external PR, not both
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Install Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: 1.26.x
+          cache: true
+      - name: gofmt && go mod tidy
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          go mod tidy -compat=1.26
+          test -z "$(gofmt -d .)" || (gofmt -d . && false)
+          test -z "$(git status --porcelain)" || (git status; git diff && false)
+      - name: Test
+        run: go test -count=1 -v ./...
+      - name: Test with -race
+        run: go test -race -count=1 -v ./...
+      - name: Build
+        run: go build .
+      - name: Upload build
+        uses: actions/upload-artifact@v7
+        with:
+          name: awl-bootstrap-node-${{ runner.os }}
+          path: |
+            awl-bootstrap-node
+            awl-bootstrap-node.exe
+          if-no-files-found: error
