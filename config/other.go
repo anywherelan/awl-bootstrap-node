@@ -113,7 +113,7 @@ func setDefaults(conf *Config) {
 
 	// Other
 	if conf.LoggerLevel == "" {
-		conf.LoggerLevel = "debug"
+		conf.LoggerLevel = "info"
 	}
 	if conf.HttpListenAddress == "" {
 		conf.HttpListenAddress = "127.0.0.1:" + strconv.Itoa(DefaultHTTPPort)
