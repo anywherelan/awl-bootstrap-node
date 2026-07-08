@@ -6,7 +6,7 @@ The Anywherelan project maintains a list of initial bootstrap nodes, which can b
 
 ## Getting started
 
-To build this project, you will need a Go compiler with a version of 1.24 or higher.
+To build this project, you will need a Go compiler with a version of 1.26 or higher.
 
 ```bash
 CGO_ENABLED=0 go build

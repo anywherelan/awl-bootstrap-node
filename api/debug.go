@@ -33,6 +33,7 @@ func (h *Handler) GetP2pDebugInfo(c echo.Context) (err error) {
 
 	debugInfo := entity.P2pDebugInfo{
 		General: entity.GeneralDebugInfo{
+			PeerID:  h.p2p.PeerID().String(),
 			Version: config.Version,
 			Uptime:  h.p2p.Uptime().String(),
 		},

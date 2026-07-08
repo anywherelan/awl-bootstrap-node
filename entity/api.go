@@ -19,6 +19,7 @@ type (
 	}
 
 	GeneralDebugInfo struct {
+		PeerID  string
 		Version string
 		Uptime  string
 	}
