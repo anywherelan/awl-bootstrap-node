@@ -65,10 +65,7 @@ func (a *Application) Init(ctx context.Context) error {
 	a.logger.Infof("Host created. We are: %s", host.ID().String())
 	a.logger.Infof("Listen interfaces: %v", host.Addrs())
 
-	err = p2pSrv.Bootstrap()
-	if err != nil {
-		return err
-	}
+	p2pSrv.Bootstrap()
 
 	handler := api.NewHandler(a.Conf, a.p2pServer, a.LogBuffer)
 	a.Api = handler
@@ -182,6 +179,7 @@ func (a *Application) makeP2pHostConfig() (p2p.HostConfig, error) {
 		}
 	}
 
+	// TODO: move to config file
 	resourceLimitsConfig := rcmgr.InfiniteLimits
 	mgr, err := rcmgr.NewResourceManager(rcmgr.NewFixedLimiter(resourceLimitsConfig))
 	if err != nil {
