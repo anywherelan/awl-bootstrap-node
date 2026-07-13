@@ -22,11 +22,13 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoremem"
 	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
 	"github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
 	"github.com/anywherelan/awl-bootstrap-node/api"
 	"github.com/anywherelan/awl-bootstrap-node/config"
+	"github.com/anywherelan/awl-bootstrap-node/metrics"
 )
 
 const (
@@ -66,6 +68,10 @@ func (a *Application) Init(ctx context.Context) error {
 	a.logger.Infof("Listen interfaces: %v", host.Addrs())
 
 	p2pSrv.Bootstrap()
+
+	// Metrics
+	metrics.SetNodeInfo(config.Version, host.ID().String())
+	go metrics.StartBackgroundUpdater(a.ctx, a.p2pServer)
 
 	handler := api.NewHandler(a.Conf, a.p2pServer, a.LogBuffer)
 	a.Api = handler
@@ -181,7 +187,12 @@ func (a *Application) makeP2pHostConfig() (p2p.HostConfig, error) {
 
 	// TODO: move to config file
 	resourceLimitsConfig := rcmgr.InfiniteLimits
-	mgr, err := rcmgr.NewResourceManager(rcmgr.NewFixedLimiter(resourceLimitsConfig))
+	// Trace reporter enables libp2p_rcmgr_* Prometheus metrics (current streams/connections/memory/fds).
+	rcmgrReporter, err := rcmgr.NewStatsTraceReporter()
+	if err != nil {
+		panic(err)
+	}
+	mgr, err := rcmgr.NewResourceManager(rcmgr.NewFixedLimiter(resourceLimitsConfig), rcmgr.WithTraceReporter(rcmgrReporter))
 	if err != nil {
 		panic(err)
 	}
@@ -219,6 +230,7 @@ func (a *Application) makeP2pHostConfig() (p2p.HostConfig, error) {
 			libp2p.AutoNATServiceRateLimit(0, 2, time.Second),
 			libp2p.ForceReachabilityPublic(),
 			libp2p.ResourceManager(mgr),
+			libp2p.PrometheusRegisterer(prometheus.DefaultRegisterer),
 		},
 		ConnManager: struct {
 			LowWater    int

@@ -23,6 +23,8 @@ type (
 		P2pNode           P2pNode
 		LoggerLevel       string
 		HttpListenAddress string
+		// DisablePprof turns off the pprof debug endpoints.
+		DisablePprof bool
 	}
 	P2pNode struct {
 		PeerID   string

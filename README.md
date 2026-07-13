@@ -54,3 +54,44 @@ Example:
 .... other fields are omitted
 }
 ```
+
+## Metrics
+
+The node exposes Prometheus metrics at `/metrics` on its HTTP API address
+(`httpListenAddress`, default `127.0.0.1:9010`):
+
+```bash
+curl http://127.0.0.1:9010/metrics
+```
+
+This includes libp2p's built-in metrics (`libp2p_relaysvc_*`, `libp2p_autonatv2_*`,
+`libp2p_swarm_*`, `libp2p_rcmgr_*`, `libp2p_identify_*`, `libp2p_holepunch_*`, ...),
+Go runtime/process metrics (`go_*`, `process_*`), and a few bootstrap-node-specific
+gauges (`awl_bootstrap_*`): node info/uptime, DHT routing table size, node bandwidth and
+peerstore size. The official libp2p Grafana dashboards can be used as-is.
+
+### Grafana + Prometheus stack
+
+The [`awl`](https://github.com/anywherelan/awl) repository ships a ready-to-use
+Prometheus + Grafana monitoring stack under
+[`monitoring/`](https://github.com/anywherelan/awl/tree/master/monitoring)
+(docker-compose with the official libp2p dashboards). Since the bootstrap node
+exposes the same `libp2p_*` metrics, that stack works here without changes — the
+most relevant dashboards for a bootstrap node are **relaysvc**, **autonatv2**,
+**swarm** and **resource-manager**.
+
+To point it at this node, set the scrape target in `monitoring/prometheus.yml` to
+this node's HTTP address (default port `9010` instead of awl's `8639`):
+
+```yaml
+  - job_name: awl-bootstrap
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - host.docker.internal:9010
+```
+
+## Profiling
+
+pprof endpoints are served under `/api/v0/debug/pprof/` and are enabled by default.
+Set `disablePprof: true` in the config to turn them off.
