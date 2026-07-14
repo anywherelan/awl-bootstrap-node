@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -62,6 +63,24 @@ func TestApplicationSmoke(t *testing.T) {
 	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("log endpoint status = %d, want 200", resp.StatusCode)
+	}
+
+	// Metrics endpoint must expose both our awl_bootstrap__* metrics and libp2p's built-in
+	// families. The libp2p_* ones are the important safety check: they confirm
+	// PrometheusRegisterer was wired through and the relay-service metrics tracer
+	// got registered.
+	metricsURL := fmt.Sprintf("http://127.0.0.1:%d/metrics", httpPort)
+	metricsBody := getWithRetry(t, metricsURL, 5*time.Second)
+	wantFamilies := []string{
+		"awl_bootstrap_node_info",
+		"awl_bootstrap_p2p_dht_routing_table_size",
+		"libp2p_swarm_",    // PrometheusRegisterer reached the swarm
+		"libp2p_relaysvc_", // relay-service metrics tracer was registered
+	}
+	for _, want := range wantFamilies {
+		if !bytes.Contains(metricsBody, []byte(want)) {
+			t.Errorf("/metrics output does not contain %q", want)
+		}
 	}
 }
 

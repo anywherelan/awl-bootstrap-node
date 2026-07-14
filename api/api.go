@@ -8,13 +8,15 @@ import (
 	http_pprof "net/http/pprof"
 	"runtime/pprof"
 
-	"github.com/anywherelan/awl-bootstrap-node/config"
 	"github.com/anywherelan/awl/p2p"
 	"github.com/anywherelan/awl/ringbuffer"
 	"github.com/go-playground/validator/v10"
 	"github.com/ipfs/go-log/v2"
+	"github.com/labstack/echo-contrib/echoprometheus"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+
+	"github.com/anywherelan/awl-bootstrap-node/config"
 )
 
 type Handler struct {
@@ -34,6 +36,9 @@ func NewHandler(conf *config.Config, p2p *p2p.P2p, logBuffer *ringbuffer.RingBuf
 	}
 }
 
+// global so the /metrics collector is registered only once even if SetupAPI runs multiple times (tests).
+var metricsHandler = echoprometheus.NewHandler()
+
 func (h *Handler) SetupAPI() error {
 	e := echo.New()
 	h.echo = e
@@ -49,11 +54,14 @@ func (h *Handler) SetupAPI() error {
 
 	// Routes
 
+	// Metrics
+	e.GET("/metrics", metricsHandler)
+
 	// Debug
 	e.GET(GetP2pDebugInfoPath, h.GetP2pDebugInfo)
 	e.GET(GetDebugLogPath, h.GetLog)
 
-	if h.conf.DevMode() {
+	if !h.conf.DisablePprof {
 		e.Any(V0Prefix+"debug/pprof/", echo.WrapHandler(http.HandlerFunc(http_pprof.Index)))
 		e.Any(V0Prefix+"debug/pprof/profile", echo.WrapHandler(http.HandlerFunc(http_pprof.Profile)))
 		e.Any(V0Prefix+"debug/pprof/trace", echo.WrapHandler(http.HandlerFunc(http_pprof.Trace)))
