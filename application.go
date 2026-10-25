@@ -177,7 +177,7 @@ func (a *Application) makeP2pHostConfig() (p2p.HostConfig, error) {
 	}
 
 	var datastore ds.Batching
-	datastore, err := badger.NewDatastore(a.Conf.PeerstoreDir(), nil)
+	datastore, err := badger.NewDatastore(a.Conf.PeerstoreDir(), peerstoreDatastoreOptions())
 	if err != nil {
 		a.logger.DPanicf("could not create badger datastore: %v", err)
 		datastore = dssync.MutexWrap(ds.NewMapDatastore())
@@ -258,6 +258,22 @@ func (a *Application) makeP2pHostConfig() (p2p.HostConfig, error) {
 			metrics.CountDHTRequests(customPeerstore),
 		},
 	}, nil
+}
+
+// peerstoreDatastoreOptions returns the go-ds-badger defaults: values in the
+// LSM tree, the value log only as a write-ahead log, no compaction on close.
+// With nil go-ds-badger uses the badger defaults instead, where the value log
+// keeps every old value until a compaction drops its version.
+func peerstoreDatastoreOptions() *badger.Options {
+	opts := badger.DefaultOptions
+	// The peerstore rewrites a few hundred keys all the time. Flush small
+	// memtables and compact level 0 often, so the old versions are dropped
+	// within hours and value log GC can delete the files.
+	opts.MaxTableSize = 8 << 20
+	opts.NumLevelZeroTables = 2
+	// Value log GC never deletes the file being written to.
+	opts.ValueLogFileSize = 64 << 20
+	return &opts
 }
 
 func (a *Application) exchangeIdentityWithPeersInBackground(p2pSrv *p2p.P2p) {
