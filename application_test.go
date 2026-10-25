@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,6 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anywherelan/awl/p2p"
+	"github.com/libp2p/go-libp2p"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/mr-tron/base58/base58"
@@ -24,19 +26,7 @@ import (
 // It spins up a real libp2p host on loopback with OS-assigned ports and a
 // badger-backed peerstore in a temp directory. No external network required.
 func TestApplicationSmoke(t *testing.T) {
-	t.Chdir(t.TempDir())
-	httpPort := writeTestConfig(t)
-
-	app := New()
-	app.SetupLoggerAndConfig()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	if err := app.Init(ctx); err != nil {
-		t.Fatalf("app.Init: %v", err)
-	}
-	t.Cleanup(app.Close)
+	_, httpPort := startTestApp(t)
 
 	// API is started in a goroutine; poll briefly until it answers.
 	url := fmt.Sprintf("http://127.0.0.1:%d/api/v0/debug/p2p_info", httpPort)
@@ -74,6 +64,8 @@ func TestApplicationSmoke(t *testing.T) {
 	wantFamilies := []string{
 		"awl_bootstrap_node_info",
 		"awl_bootstrap_p2p_dht_routing_table_size",
+		"awl_bootstrap_p2p_relay_circuit_duration_seconds_bucket",
+		"awl_bootstrap_peerstore_peers_with_addrs",
 		"libp2p_swarm_",    // PrometheusRegisterer reached the swarm
 		"libp2p_relaysvc_", // relay-service metrics tracer was registered
 	}
@@ -82,6 +74,95 @@ func TestApplicationSmoke(t *testing.T) {
 			t.Errorf("/metrics output does not contain %q", want)
 		}
 	}
+}
+
+// TestClientMetrics connects a client that introduces itself as awl and lets
+// its DHT query the node. The metrics that depend on the client must show it:
+// connected peers and DHT requests by client, and the kad-dht RPC metrics.
+func TestClientMetrics(t *testing.T) {
+	app, httpPort := startTestApp(t)
+	ctx := t.Context()
+	nodeHost := app.p2pServer.Host()
+	nodeInfo := peer.AddrInfo{ID: nodeHost.ID(), Addrs: nodeHost.Network().ListenAddresses()}
+
+	client, err := libp2p.New(
+		libp2p.UserAgent("awl/linux-arm64/v0.20.0"),
+		libp2p.ListenAddrStrings("/ip4/127.0.0.1/udp/0/quic-v1"),
+	)
+	if err != nil {
+		t.Fatalf("libp2p.New: %v", err)
+	}
+	t.Cleanup(func() { _ = client.Close() })
+	clientDHT, err := dht.New(client,
+		dht.Mode(dht.ModeClient),
+		dht.ProtocolPrefix(p2p.DHTProtocolPrefix),
+		dht.BootstrapPeers(nodeInfo),
+	)
+	if err != nil {
+		t.Fatalf("dht.New: %v", err)
+	}
+	t.Cleanup(func() { _ = clientDHT.Close() })
+
+	if err := client.Connect(ctx, nodeInfo); err != nil {
+		t.Fatalf("connect to the node: %v", err)
+	}
+	// A refresh queries the peers of the routing table, so the node has to be
+	// in it first.
+	deadline := time.Now().Add(5 * time.Second)
+	for clientDHT.RoutingTable().Size() == 0 {
+		if time.Now().After(deadline) {
+			t.Fatal("the node did not get into the routing table of the client")
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	if err := <-clientDHT.ForceRefresh(); err != nil {
+		t.Logf("refresh routing table: %v", err)
+	}
+
+	want := []string{
+		`awl_bootstrap_p2p_peers_connected{app="awl",arch="arm64",os="linux",version="v0.20.0"} 1`,
+		`awl_bootstrap_p2p_dht_requests_total{app="awl",message_type="FIND_NODE",version="v0.20.0"}`,
+		"libp2p_kad_dht_rpc_inbound_messages_total",
+	}
+	// identify and the requests reach the node in the background
+	metricsURL := fmt.Sprintf("http://127.0.0.1:%d/metrics", httpPort)
+	var missing []string
+	deadline = time.Now().Add(5 * time.Second)
+	for {
+		body := getWithRetry(t, metricsURL, 5*time.Second)
+		missing = missing[:0]
+		for _, w := range want {
+			if !bytes.Contains(body, []byte(w)) {
+				missing = append(missing, w)
+			}
+		}
+		if len(missing) == 0 || time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	for _, m := range missing {
+		t.Errorf("/metrics output does not contain %q", m)
+	}
+}
+
+// startTestApp starts the node with a fresh config in a temp directory and
+// stops it when the test ends. It returns the port of the HTTP API.
+func startTestApp(t *testing.T) (*Application, int) {
+	t.Helper()
+	t.Chdir(t.TempDir())
+	httpPort := writeTestConfig(t)
+
+	app := New()
+	app.SetupLoggerAndConfig()
+
+	// t.Context is canceled before the cleanups run: the same order as in main
+	if err := app.Init(t.Context()); err != nil {
+		t.Fatalf("app.Init: %v", err)
+	}
+	t.Cleanup(app.Close)
+
+	return app, httpPort
 }
 
 // writeTestConfig generates a fresh ed25519 identity, builds a minimal Config

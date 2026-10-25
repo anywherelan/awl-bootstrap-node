@@ -3,12 +3,15 @@
 // Most of the useful telemetry for a bootstrap node (relay service, autonat,
 // swarm, resource manager, identify, holepunch, ...) comes from libp2p's own
 // built-in Prometheus metrics, enabled via libp2p.PrometheusRegisterer. This
-// package only adds the few gauges that libp2p does not expose: DHT routing
-// table size, total node bandwidth and node info/uptime.
+// package only adds what libp2p does not expose: DHT routing table size, total
+// node bandwidth, node info/uptime, peerstore size, connected peers and DHT
+// requests by client, and relayed connection durations with buckets that fit
+// the relay limits.
 package metrics
 
 import (
 	"context"
+	"sync/atomic"
 	"time"
 
 	"github.com/libp2p/go-libp2p/core/host"
@@ -29,7 +32,15 @@ type P2pMetrics interface {
 	RoutingTableSize() int
 	NetworkStats() metrics.Stats
 	BootstrapPeersStats() (total int, connected int)
-	Host() host.Host
+}
+
+// scrapeHost is the host that the collectors read on every scrape.
+var scrapeHost atomic.Pointer[host.Host]
+
+// SetHost sets the host for the metrics computed on scrape: connected peers
+// and peerstore size. They are absent until it is set.
+func SetHost(h host.Host) {
+	scrapeHost.Store(&h)
 }
 
 // StartBackgroundUpdater periodically updates gauge-type metrics from their data sources.
@@ -61,10 +72,6 @@ func updateGauges(p2pMetrics P2pMetrics, startTime time.Time) {
 	P2PBandwidthBytesTotal.WithLabelValues("out").Set(float64(stats.TotalOut))
 	P2PBandwidthRateBytes.WithLabelValues("in").Set(stats.RateIn)
 	P2PBandwidthRateBytes.WithLabelValues("out").Set(stats.RateOut)
-
-	peerstore := p2pMetrics.Host().Peerstore()
-	PeerstorePeersWithAddrs.Set(float64(len(peerstore.PeersWithAddrs())))
-	PeerstorePeersWithKeys.Set(float64(len(peerstore.PeersWithKeys())))
 
 	NodeUptimeSeconds.Set(time.Since(startTime).Seconds())
 }
