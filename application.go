@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	awlmetrics "github.com/anywherelan/awl/metrics"
 	"github.com/anywherelan/awl/p2p"
 	"github.com/anywherelan/awl/ringbuffer"
 	ds "github.com/ipfs/go-datastore"
@@ -57,6 +58,11 @@ func (a *Application) Init(ctx context.Context) error {
 		return fmt.Errorf("could not make p2p host config: %s", err)
 	}
 	a.datastore = p2pHostConfig.DHTDatastore
+	// Before the host: the DHT starts with it. Not fatal: without it the node
+	// only lacks the libp2p_kad_dht_* metrics.
+	if err := awlmetrics.ExportKadDHTMetrics(); err != nil {
+		a.logger.Errorf("failed to export kad-dht metrics: %v", err)
+	}
 	p2pSrv := p2p.NewP2p(ctx)
 	host, err := p2pSrv.InitHost(p2pHostConfig)
 	if err != nil {
@@ -71,6 +77,8 @@ func (a *Application) Init(ctx context.Context) error {
 
 	// Metrics
 	metrics.SetNodeInfo(config.Version, host.ID().String())
+	metrics.SetHost(host)
+	metrics.SetBandwidthStats(a.p2pServer)
 	go metrics.StartBackgroundUpdater(a.ctx, a.p2pServer)
 
 	handler := api.NewHandler(a.Conf, a.p2pServer, a.LogBuffer)
@@ -170,7 +178,7 @@ func (a *Application) makeP2pHostConfig() (p2p.HostConfig, error) {
 	}
 
 	var datastore ds.Batching
-	datastore, err := badger.NewDatastore(a.Conf.PeerstoreDir(), nil)
+	datastore, err := badger.NewDatastore(a.Conf.PeerstoreDir(), peerstoreDatastoreOptions())
 	if err != nil {
 		a.logger.DPanicf("could not create badger datastore: %v", err)
 		datastore = dssync.MutexWrap(ds.NewMapDatastore())
@@ -223,7 +231,10 @@ func (a *Application) makeP2pHostConfig() (p2p.HostConfig, error) {
 		AllowEmptyBootstrapPeers: true,
 		Libp2pOpts: []libp2p.Option{
 			libp2p.EnableRelay(),
-			libp2p.EnableRelayService(relay.WithResources(relayResourcesCfg)),
+			libp2p.EnableRelayService(
+				relay.WithResources(relayResourcesCfg),
+				relay.WithMetricsTracer(metrics.RelayMetricsTracer(prometheus.DefaultRegisterer)),
+			),
 			libp2p.EnableHolePunching(),
 			libp2p.EnableNATService(),
 			libp2p.EnableAutoNATv2(),
@@ -245,8 +256,25 @@ func (a *Application) makeP2pHostConfig() (p2p.HostConfig, error) {
 		DHTDatastore: datastore,
 		DHTOpts: []dht.Option{
 			dht.Mode(dht.ModeServer),
+			metrics.CountDHTRequests(customPeerstore),
 		},
 	}, nil
+}
+
+// peerstoreDatastoreOptions returns the go-ds-badger defaults: values in the
+// LSM tree, the value log only as a write-ahead log, no compaction on close.
+// With nil go-ds-badger uses the badger defaults instead, where the value log
+// keeps every old value until a compaction drops its version.
+func peerstoreDatastoreOptions() *badger.Options {
+	opts := badger.DefaultOptions
+	// The peerstore rewrites a few hundred keys all the time. Flush small
+	// memtables and compact level 0 often, so the old versions are dropped
+	// within hours and value log GC can delete the files.
+	opts.MaxTableSize = 8 << 20
+	opts.NumLevelZeroTables = 2
+	// Value log GC never deletes the file being written to.
+	opts.ValueLogFileSize = 64 << 20
+	return &opts
 }
 
 func (a *Application) exchangeIdentityWithPeersInBackground(p2pSrv *p2p.P2p) {

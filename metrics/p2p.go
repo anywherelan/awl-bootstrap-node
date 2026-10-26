@@ -16,24 +16,6 @@ var (
 		Help:      "DHT routing table size.",
 	})
 
-	// P2PBandwidthBytesTotal reports cumulative node-wide traffic. libp2p's
-	// BandwidthCounter is not wired to Prometheus, so we snapshot it here.
-	// Note: relayed traffic is also counted by libp2p_relaysvc_data_transferred_bytes_total.
-	// These are cumulative counters exposed as a Gauge snapshot; use rate()/increase() in queries.
-	P2PBandwidthBytesTotal = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Namespace: namespace,
-		Subsystem: subsystemP2P,
-		Name:      "bandwidth_bytes_total",
-		Help:      "Total node bandwidth in bytes (snapshot of libp2p BandwidthCounter).",
-	}, []string{"direction"})
-
-	P2PBandwidthRateBytes = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Namespace: namespace,
-		Subsystem: subsystemP2P,
-		Name:      "bandwidth_rate_bytes",
-		Help:      "Current node bandwidth rate in bytes per second.",
-	}, []string{"direction"})
-
 	P2PBootstrapPeersConnected = promauto.NewGauge(prometheus.GaugeOpts{
 		Namespace: namespace,
 		Subsystem: subsystemP2P,

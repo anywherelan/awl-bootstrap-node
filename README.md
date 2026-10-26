@@ -9,7 +9,7 @@ The Anywherelan project maintains a list of initial bootstrap nodes, which can b
 To build this project, you will need a Go compiler with a version of 1.26 or higher.
 
 ```bash
-CGO_ENABLED=0 go build
+CGO_ENABLED=0 go build -trimpath
 ```
 
 First, you need to generate example config.
@@ -57,31 +57,46 @@ Example:
 
 ## Metrics
 
-The node exposes Prometheus metrics at `/metrics` on its HTTP API address
-(`httpListenAddress`, default `127.0.0.1:9010`):
+The node exposes Prometheus metrics at `/metrics` on its HTTP API address,
+`HttpListenAddress` in the config, `127.0.0.1:9010` by default:
 
 ```bash
 curl http://127.0.0.1:9010/metrics
 ```
 
-This includes libp2p's built-in metrics (`libp2p_relaysvc_*`, `libp2p_autonatv2_*`,
-`libp2p_swarm_*`, `libp2p_rcmgr_*`, `libp2p_identify_*`, `libp2p_holepunch_*`, ...),
-Go runtime/process metrics (`go_*`, `process_*`), and a few bootstrap-node-specific
-gauges (`awl_bootstrap_*`): node info/uptime, DHT routing table size, node bandwidth and
-peerstore size. The official libp2p Grafana dashboards can be used as-is.
+They include:
 
-### Grafana + Prometheus stack
+- libp2p metrics: `libp2p_relaysvc_*`, `libp2p_autonatv2_*`, `libp2p_swarm_*`,
+  `libp2p_rcmgr_*`, `libp2p_identify_*`, `libp2p_holepunch_*` and others;
+- DHT requests served by the node: `libp2p_kad_dht_*`;
+- Go runtime and process metrics: `go_*`, `process_*`;
+- metrics of the node itself, `awl_bootstrap_*`:
 
-The [`awl`](https://github.com/anywherelan/awl) repository ships a ready-to-use
-Prometheus + Grafana monitoring stack under
-[`monitoring/`](https://github.com/anywherelan/awl/tree/master/monitoring)
-(docker-compose with the official libp2p dashboards). Since the bootstrap node
-exposes the same `libp2p_*` metrics, that stack works here without changes — the
-most relevant dashboards for a bootstrap node are **relaysvc**, **autonatv2**,
-**swarm** and **resource-manager**.
+| Metric | What it shows |
+|---|---|
+| `awl_bootstrap_node_info`, `awl_bootstrap_node_uptime_seconds` | version, peer ID and uptime |
+| `awl_bootstrap_p2p_peers_connected` | connected peers by `app`, `version`, `os` and `arch` from their user agent |
+| `awl_bootstrap_p2p_dht_requests_total` | DHT requests by `message_type` and by `app` and `version` of the sender |
+| `awl_bootstrap_p2p_relay_circuit_duration_seconds` | how long relayed connections last, failed attempts included |
+| `awl_bootstrap_p2p_dht_routing_table_size` | DHT routing table size |
+| `awl_bootstrap_p2p_bootstrap_peers_connected` | connected bootstrap peers from the config |
+| `awl_bootstrap_p2p_bandwidth_bytes_total` | traffic by `protocol` and `direction`: data of libp2p streams, without TCP, QUIC and IP overhead |
+| `awl_bootstrap_peerstore_peers_with_addrs`, `awl_bootstrap_peerstore_peers_with_keys` | peerstore size |
 
-To point it at this node, set the scrape target in `monitoring/prometheus.yml` to
-this node's HTTP address (default port `9010` instead of awl's `8639`):
+The output also has `awl_*` metrics with zero values. They come from the awl client
+code that the node reuses. Drop them when scraping, see the example below.
+
+### Grafana and Prometheus
+
+The [`awl`](https://github.com/anywherelan/awl) repository has a Prometheus and
+Grafana stack in [`monitoring/`](https://github.com/anywherelan/awl/tree/master/monitoring).
+It runs with docker compose and has the official libp2p dashboards. The node has
+the same `libp2p_*` metrics, so the stack works here as is. For a bootstrap node
+the most useful dashboards are **relaysvc**, **autonatv2**, **swarm** and
+**resource-manager**.
+
+To collect metrics from this node, add a job to `monitoring/prometheus.yml` with
+its HTTP address. The node uses port `9010` by default, awl uses `8639`:
 
 ```yaml
   - job_name: awl-bootstrap
@@ -89,9 +104,14 @@ this node's HTTP address (default port `9010` instead of awl's `8639`):
     static_configs:
       - targets:
           - host.docker.internal:9010
+    # drop the zero awl_* metrics of the awl client code
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: awl_(node|p2p|peers|vpn|dns|socks5)_.+
+        action: drop
 ```
 
 ## Profiling
 
 pprof endpoints are served under `/api/v0/debug/pprof/` and are enabled by default.
-Set `disablePprof: true` in the config to turn them off.
+Set `DisablePprof: true` in the config to turn them off.

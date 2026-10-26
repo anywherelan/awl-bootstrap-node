@@ -55,7 +55,7 @@ func main() {
 	finishedCh := make(chan struct{})
 	go func() {
 		select {
-		case <-time.After(3 * time.Second):
+		case <-time.After(15 * time.Second):
 			logger.Fatal("exit timeout reached: terminating")
 		case <-finishedCh:
 			// ok
