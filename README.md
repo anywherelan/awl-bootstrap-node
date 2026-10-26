@@ -9,7 +9,7 @@ The Anywherelan project maintains a list of initial bootstrap nodes, which can b
 To build this project, you will need a Go compiler with a version of 1.26 or higher.
 
 ```bash
-CGO_ENABLED=0 go build
+CGO_ENABLED=0 go build -trimpath
 ```
 
 First, you need to generate example config.
@@ -114,4 +114,4 @@ its HTTP address. The node uses port `9010` by default, awl uses `8639`:
 ## Profiling
 
 pprof endpoints are served under `/api/v0/debug/pprof/` and are enabled by default.
-Set `disablePprof: true` in the config to turn them off.
+Set `DisablePprof: true` in the config to turn them off.
