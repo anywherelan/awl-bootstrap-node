@@ -80,7 +80,7 @@ They include:
 | `awl_bootstrap_p2p_relay_circuit_duration_seconds` | how long relayed connections last, failed attempts included |
 | `awl_bootstrap_p2p_dht_routing_table_size` | DHT routing table size |
 | `awl_bootstrap_p2p_bootstrap_peers_connected` | connected bootstrap peers from the config |
-| `awl_bootstrap_p2p_bandwidth_bytes_total`, `awl_bootstrap_p2p_bandwidth_rate_bytes` | traffic of the node |
+| `awl_bootstrap_p2p_bandwidth_bytes_total` | traffic by `protocol` and `direction`: data of libp2p streams, without TCP, QUIC and IP overhead |
 | `awl_bootstrap_peerstore_peers_with_addrs`, `awl_bootstrap_peerstore_peers_with_keys` | peerstore size |
 
 The output also has `awl_*` metrics with zero values. They come from the awl client

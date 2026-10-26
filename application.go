@@ -78,6 +78,7 @@ func (a *Application) Init(ctx context.Context) error {
 	// Metrics
 	metrics.SetNodeInfo(config.Version, host.ID().String())
 	metrics.SetHost(host)
+	metrics.SetBandwidthStats(a.p2pServer)
 	go metrics.StartBackgroundUpdater(a.ctx, a.p2pServer)
 
 	handler := api.NewHandler(a.Conf, a.p2pServer, a.LogBuffer)

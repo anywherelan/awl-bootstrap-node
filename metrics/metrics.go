@@ -3,10 +3,10 @@
 // Most of the useful telemetry for a bootstrap node (relay service, autonat,
 // swarm, resource manager, identify, holepunch, ...) comes from libp2p's own
 // built-in Prometheus metrics, enabled via libp2p.PrometheusRegisterer. This
-// package only adds what libp2p does not expose: DHT routing table size, total
-// node bandwidth, node info/uptime, peerstore size, connected peers and DHT
-// requests by client, and relayed connection durations with buckets that fit
-// the relay limits.
+// package only adds what libp2p does not expose: DHT routing table size, node
+// bandwidth by protocol, node info/uptime, peerstore size, connected peers and
+// DHT requests by client, and relayed connection durations with buckets that
+// fit the relay limits.
 package metrics
 
 import (
@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/libp2p/go-libp2p/core/metrics"
 )
 
 const (
@@ -30,7 +29,6 @@ const (
 // It is satisfied by *github.com/anywherelan/awl/p2p.P2p.
 type P2pMetrics interface {
 	RoutingTableSize() int
-	NetworkStats() metrics.Stats
 	BootstrapPeersStats() (total int, connected int)
 }
 
@@ -66,12 +64,6 @@ func updateGauges(p2pMetrics P2pMetrics, startTime time.Time) {
 
 	_, bootstrapConnected := p2pMetrics.BootstrapPeersStats()
 	P2PBootstrapPeersConnected.Set(float64(bootstrapConnected))
-
-	stats := p2pMetrics.NetworkStats()
-	P2PBandwidthBytesTotal.WithLabelValues("in").Set(float64(stats.TotalIn))
-	P2PBandwidthBytesTotal.WithLabelValues("out").Set(float64(stats.TotalOut))
-	P2PBandwidthRateBytes.WithLabelValues("in").Set(stats.RateIn)
-	P2PBandwidthRateBytes.WithLabelValues("out").Set(stats.RateOut)
 
 	NodeUptimeSeconds.Set(time.Since(startTime).Seconds())
 }
