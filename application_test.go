@@ -76,6 +76,38 @@ func TestApplicationSmoke(t *testing.T) {
 	}
 }
 
+// TestAPICompression checks that responses are gzipped for clients that ask
+// for it, except pprof profiles, which are gzipped already.
+func TestAPICompression(t *testing.T) {
+	_, httpPort := startTestApp(t)
+	baseURL := fmt.Sprintf("http://127.0.0.1:%d", httpPort)
+
+	tests := []struct {
+		path         string
+		wantEncoding string
+	}{
+		{path: "/metrics", wantEncoding: "gzip"},
+		{path: "/api/v0/debug/pprof/heap", wantEncoding: ""},
+	}
+	for _, tt := range tests {
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, baseURL+tt.path, nil)
+		if err != nil {
+			t.Fatalf("new request: %v", err)
+		}
+		// Set by hand, the client returns the body as is instead of
+		// decompressing it and dropping the header.
+		req.Header.Set("Accept-Encoding", "gzip")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("GET %s: %v", tt.path, err)
+		}
+		_ = resp.Body.Close()
+		if got := resp.Header.Get("Content-Encoding"); got != tt.wantEncoding {
+			t.Errorf("GET %s: Content-Encoding = %q, want %q", tt.path, got, tt.wantEncoding)
+		}
+	}
+}
+
 // TestClientMetrics connects a client that introduces itself as awl and lets
 // its DHT query the node. The metrics that depend on the client must show it:
 // connected peers and DHT requests by client, and the kad-dht RPC metrics.

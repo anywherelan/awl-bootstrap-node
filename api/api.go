@@ -7,6 +7,8 @@ import (
 	"net/http"
 	http_pprof "net/http/pprof"
 	"runtime/pprof"
+	"strings"
+	"time"
 
 	"github.com/anywherelan/awl/p2p"
 	"github.com/anywherelan/awl/ringbuffer"
@@ -36,6 +38,18 @@ func NewHandler(conf *config.Config, p2p *p2p.P2p, logBuffer *ringbuffer.RingBuf
 	}
 }
 
+const (
+	// ReadTimeout covers only reading the request: the server clears the
+	// deadline once the body is read. No WriteTimeout: pprof profile and
+	// trace respond for 30+ seconds.
+	readHeaderTimeout = 10 * time.Second
+	readTimeout       = 20 * time.Second
+	idleTimeout       = 2 * time.Minute
+
+	// Compressing shorter responses saves nothing.
+	gzipMinLength = 1024
+)
+
 // global so the /metrics collector is registered only once even if SetupAPI runs multiple times (tests).
 var metricsHandler = echoprometheus.NewHandler()
 
@@ -51,6 +65,13 @@ func (h *Handler) SetupAPI() error {
 	if !h.conf.DevMode() {
 		e.Use(middleware.Recover())
 	}
+	e.Use(middleware.GzipWithConfig(middleware.GzipConfig{
+		// pprof profiles are gzipped already.
+		Skipper: func(c echo.Context) bool {
+			return strings.HasPrefix(c.Request().URL.Path, V0Prefix+"debug/pprof/")
+		},
+		MinLength: gzipMinLength,
+	}))
 
 	// Routes
 
@@ -81,6 +102,9 @@ func (h *Handler) SetupAPI() error {
 		return fmt.Errorf("unable to bind address %s: %v", address, err)
 	}
 	h.echo.Listener = listener
+	e.Server.ReadHeaderTimeout = readHeaderTimeout
+	e.Server.ReadTimeout = readTimeout
+	e.Server.IdleTimeout = idleTimeout
 	h.logger.Infof("starting web server on http://%s", listener.Addr().String())
 	go func() {
 		if err := e.StartServer(e.Server); err != nil && err != http.ErrServerClosed {
