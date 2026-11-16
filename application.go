@@ -207,9 +207,9 @@ func (a *Application) makeP2pHostConfig() (p2p.HostConfig, error) {
 
 	relayResourcesCfg := relay.Resources{
 		Limit: &relay.RelayLimit{
-			Duration: 2 * time.Minute,
-			// the same as in `backgroundOutboundHandler` func in awl/service/tunnel.go
-			Data: (20 + 1) << 20,
+			Duration: 10 * time.Minute,
+			// in each direction. Not 0: the relay would close the connection at once
+			Data: 512 << 20,
 		},
 
 		ReservationTTL: time.Hour,
