@@ -7,6 +7,16 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). B
 a minor version may contain breaking changes. They are listed under **Changed** or
 **Removed**.
 
+## [0.12.0] - 2026-11-16
+
+### Changed
+
+- **Relayed connections last longer.** The node closes a relayed connection after
+  10 minutes or after 512 MiB in one direction. Before, it was 2 minutes or 21 MiB. Peers
+  connected through the node reconnect less often: a transfer at 10 Mbit/s was cut about
+  every 17 seconds, now about every 7 minutes. Relay traffic of the node can grow a
+  little, because such transfers no longer stop to reconnect.
+
 ## [0.11.0] - 2026-10-26
 
 ### Added
@@ -63,3 +73,4 @@ a minor version may contain breaking changes. They are listed under **Changed** 
   [#18](https://github.com/anywherelan/awl-bootstrap-node/pull/18))
 
 [0.11.0]: https://github.com/anywherelan/awl-bootstrap-node/compare/v0.10.0...v0.11.0
+[0.12.0]: https://github.com/anywherelan/awl-bootstrap-node/compare/v0.11.0...v0.12.0
